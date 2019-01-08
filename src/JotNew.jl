@@ -61,19 +61,19 @@ function Jet(;
     Jet(dom, rng, f!, df!, df′!, s)
 end
 
-abstract type JotOp{D<:JotSpace,R<:JotSpace} end
+abstract type JotOp end
 
-struct JotOpNl{D<:JotSpace, R<:JotSpace, T<:Jet{D,R}} <: JotOp{D,R}
+struct JotOpNl{T<:Jet} <: JotOp
     jet::T
 end
 JotOpNl(;kwargs...) = JotOpNl(Jet(;kwargs...))
 
-struct JotOpLn{D<:JotSpace, R<:JotSpace, T<:Jet{D,R}} <: JotOp{D,R}
+struct JotOpLn{T<:Jet} <: JotOp
     jet::T
 end
 JotOpLn(;kwargs...) = JotOpLn(Jet(;kwargs...))
 
-struct JotOpAdjoint{D<:JotSpace, R<:JotSpace, T<:JotOp} <: JotOp{D,R}
+struct JotOpAdjoint{T<:JotOp} <: JotOp
     op::T
 end
 
@@ -110,19 +110,19 @@ function jacobian(F::JotOpNl, mₒ::AbstractArray)
 end
 jacobian(A::JotOpLn, mₒ::AbstractArray) = A
 
-Base.adjoint(A::JotOpLn{D,R}) where {D,R} = JotOpAdjoint{D,R,typeof(A)}(A)
+Base.adjoint(A::JotOpLn) = JotOpAdjoint(A)
 Base.adjoint(A::JotOpAdjoint) = A.op
 
 LinearAlgebra.mul!(d::AbstractArray, F::JotOpNl, m::AbstractArray) = jet(F).f!(d, m; state(A)...)
 LinearAlgebra.mul!(d::AbstractArray, A::JotOpLn, m::AbstractArray) = jet(A).df!(d, m; state(A)...)
-LinearAlgebra.mul!(m::AbstractArray, A::JotOpAdjoint{D,R,T}, d::AbstractArray) where {D<:JotSpace,R<:JotSpace,T<:JotOpLn} = jet(A).df′!(m, d; state(A)...)
+LinearAlgebra.mul!(m::AbstractArray, A::JotOpAdjoint{T}, d::AbstractArray) where {T<:JotOpLn} = jet(A).df′!(m, d; state(A)...)
 
 Base.:*(A::JotOp, m::AbstractArray) = mul!(zeros(range(A)), A, m)
 
 #
 # composition
 #
-struct JotOpComposite{T<:Tuple, D<:JotSpace, R<:JotSpace} <: JotOp{D,R}
+struct JotOpComposite{T<:Tuple, D<:JotSpace, R<:JotSpace} <: JotOp
     ops::T
     function JotOpComposite(ops::T) where {T<:Tuple}
         D = typeof(domain(ops[end]))
@@ -145,8 +145,9 @@ function LinearAlgebra.mul!(d::T, A::JotOpComposite, m::AbstractArray) where {T<
 end
 
 function LinearAlgebra.mul!(m::T, A::JotOpAdjoint{O}, d::AbstractArray) where {T<:AbstractArray, O<:JotOpComposite}
-    f = mapreduce(i->(_d->adjoint(A.ops[i])*_d), ∘, length(A.ops):-1:1)
-    m .= f(d)::T
+    f = mapreduce(i->(_d->adjoint(A.op.ops[i])*_d), ∘, length(A.op.ops):-1:1)
+    m .= f(d)
+    m::T
 end
 
 Base.adjoint(A::JotOpComposite) = JotOpAdjoint(A)
@@ -165,7 +166,7 @@ end
 #
 # Block operator
 #
-struct JotOpBlock{D<:JotSpace,R<:JotSpace,T<:JotOp} <: JotOp{D,R}
+struct JotOpBlock{D<:JotSpace,R<:JotSpace,T<:JotOp} <: JotOp
     ops::Matrix{T}
     function JotOpBlock(ops::Matrix{T}) where {T<:JotOp}
         D = promote_type(ntuple(i->eltype(range(ops[i,1])), size(ops,1))...)
@@ -230,7 +231,7 @@ function LinearAlgebra.mul!(m::AbstractArray, B::JotOpAdjoint{T}, d::AbstractArr
     m
 end
 
-Base.adjoint(A::JotOpBlock{D,R,T}) where {D,R,T} = JotOpAdjoint{D,R,T}(A)
+Base.adjoint(A::JotOpBlock{D,R,T}) where {D,R,T} = JotOpAdjoint(A)
 
 function jacobian(F::JotOpBlock, m::AbstractArray)
     domrng = Vector{UnitRange}(undef, size(F, 2))

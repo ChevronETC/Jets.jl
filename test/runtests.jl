@@ -64,9 +64,14 @@ length(m)
 d = A*m
 @inferred A*m
 @code_warntype A*m
+d_check = [A₁*m[1:2] + A₂*m[3:4] ; A₂*m[1:2] + A₁*m[3:4]]
+d ≈ d_check
+
+d
+d_check
+
 mul!(d,A,m)
 @code_warntype mul!(d,A,m)
-d_check = [A₁*m[1:2] + A₂*m[3:4] ; A₂*m[1:2] + A₁*m[3:4]]
 d ≈ d_check
 
 B = JotOpDiagonal([2.0,3.0,4.0,2.0])
@@ -89,6 +94,8 @@ d_check[3:4] .= A₁*(A₂*m[1:2]) .+ A₁*(A₂*m[3:4])
 d ≈ d_check
 
 B₁ = A₁'
+@inferred adjoint(A₁)
+@code_warntype adjoint(A₁)
 
 m = rand(domain(B₁))
 d = B₁*m
@@ -96,7 +103,11 @@ d_check = A₁*m
 d ≈ d_check
 
 B = A'
+@inferred adjoint(A)
+@code_warntype adjoint(A)
 
 domain(B)
+@code_warntype domain(B)
 m = rand(domain(B))
+@code_warntype rand(domain(B))
 d = B*m
