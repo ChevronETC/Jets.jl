@@ -1,7 +1,6 @@
 #=
 NOTES...
 * we use an extra field (a named tuple) in JotOp to keep operator state
-* how do we do an in-place multiply -- mul!(d,A,m) ... use the state(A.s)?
 * I could not figure out how to make the block operator without including spaces in JotOp
 * Can we use LinearMaps.jl, AbstractOperators.jl, etc.?
 
@@ -9,11 +8,9 @@ TODO...
  * revisit type stability / generated code
    - compoiste operator has unstable mul,mul!
    - block operator has unstable constructor
-   - I don't think we need parametric type for JotOp, and can drop D,R from JotOpLn,JotOpNl
  * LinearAlgebra has an Adjoint type, can we use it?
  * propagating @inbounds
  * distributed block operator (memory)
- * think about in-place, mul! for composite operator ... memory and type stability
  * distributed block operator (file system)
  * fault tolerance
  * kron, +, -
@@ -42,7 +39,7 @@ end
 
 jot_missing(m) = error("not implemented")
 
-struct Jet{D<:JotSpace,R<:JotSpace,F<:Function,DF<:Function,DF′<:Function,S<:NamedTuple}
+mutable struct Jet{D<:JotSpace,R<:JotSpace,F<:Function,DF<:Function,DF′<:Function,S<:NamedTuple}
     dom::D
     rng::R
     f!::F
@@ -77,12 +74,15 @@ struct JotOpAdjoint{T<:JotOp} <: JotOp
     op::T
 end
 
-jet(A::JotOp) = A.jet
-jet(A::JotOpAdjoint) = jet(A.op)
-state(A::JotOp) = jet(A).s
-
 domain(jet::Jet) = jet.dom
 Base.range(jet::Jet) = jet.rng
+state(jet::Jet) = jet.s
+state!(jet, s) = jet.s = merge(jet.s, s)
+
+jet(A::JotOp) = A.jet
+jet(A::JotOpAdjoint) = jet(A.op)
+state(A::JotOp) = state(jet(A))
+state!(A::JotOp, s) = state!(jet(A), s)
 
 domain(A::JotOp) = domain(jet(A))
 Base.range(A::JotOp) = range(jet(A))
@@ -105,7 +105,7 @@ Base.size(A::Union{Jet,JotOp}, i) = prod(shape(A, i))
 Base.size(A::Union{Jet,JotOp}) = (size(A, 1), size(A, 2))
 
 function jacobian(F::JotOpNl, mₒ::AbstractArray)
-    state(F) = merge(state(F), (mₒ=mₒ,))
+    state!(F, merge(state(F), (mₒ=mₒ,)))
     JotOpLn(jet(F))
 end
 jacobian(A::JotOpLn, mₒ::AbstractArray) = A
@@ -113,7 +113,7 @@ jacobian(A::JotOpLn, mₒ::AbstractArray) = A
 Base.adjoint(A::JotOpLn) = JotOpAdjoint(A)
 Base.adjoint(A::JotOpAdjoint) = A.op
 
-LinearAlgebra.mul!(d::AbstractArray, F::JotOpNl, m::AbstractArray) = jet(F).f!(d, m; state(A)...)
+LinearAlgebra.mul!(d::AbstractArray, F::JotOpNl, m::AbstractArray) = jet(F).f!(d, m; state(F)...)
 LinearAlgebra.mul!(d::AbstractArray, A::JotOpLn, m::AbstractArray) = jet(A).df!(d, m; state(A)...)
 LinearAlgebra.mul!(m::AbstractArray, A::JotOpAdjoint{T}, d::AbstractArray) where {T<:JotOpLn} = jet(A).df′!(m, d; state(A)...)
 
@@ -130,10 +130,10 @@ struct JotOpComposite{T<:Tuple, D<:JotSpace, R<:JotSpace} <: JotOp
         new{T,D,R}(ops)
     end
 end
-Base.:∘(A₂::JotOp, A₁::JotOp) = JotOpComposite((A₁, A₂))
-Base.:∘(A₂::JotOp, A₁::JotOpComposite) = JotOpComposite((A₁.ops..., A₂))
-Base.:∘(A₂::JotOpComposite, A₁::JotOp) = JotOpComposite((A₁, A₂.ops...))
-Base.:∘(A₂::JotOpComposite, A₁::JotOpComposite) = JotOpComposite((A₁.ops..., A₂.ops...))
+Base.:∘(A₂::JotOp, A₁::JotOp) = JotOpComposite((A₂, A₁))
+Base.:∘(A₂::JotOp, A₁::JotOpComposite) = JotOpComposite((A₂, A₁.ops...))
+Base.:∘(A₂::JotOpComposite, A₁::JotOp) = JotOpComposite((A₂.ops..., A₁))
+Base.:∘(A₂::JotOpComposite, A₁::JotOpComposite) = JotOpComposite((A₂.ops..., A₁.ops...))
 
 domain(A::JotOpComposite) = domain(A.ops[end])
 Base.range(A::JotOpComposite) = range(A.ops[1])
@@ -160,7 +160,7 @@ function jacobian(A::JotOpComposite, m::AbstractArray)
             m = A.ops[i]*m
         end
     end
-    JotOpComposite((ops...))
+    JotOpComposite((ops...,))
 end
 
 #
@@ -175,6 +175,12 @@ struct JotOpBlock{D<:JotSpace,R<:JotSpace,T<:JotOp} <: JotOp
     end
 end
 
+struct JotOpZeroBlock{T,N} <: JotOp
+    dom::JotSpace{T,N}
+    rng::JotSpace{T,N}
+end
+jacobian(A::JotOpZeroBlock, m) = A
+
 Base.hcat(A::JotOp...) = JotOpBlock([A[j] for i=1:1, j=1:length(A)])
 Base.vcat(A::JotOp...) = JotOpBlock([A[i] for i=1:length(A), j=1:1])
 Base.vect(A::JotOp...) = JotOpBlock([A[i] for i=1:length(A), j=1:1])
@@ -183,11 +189,11 @@ Base.getindex(A::JotOpBlock, i, j) = A.ops[i,j]
 Base.getindex(A::JotOpAdjoint{T}, i, j) where {T<:JotOpBlock} = A.op.ops[j,i]
 
 function domain(A::JotOpBlock{D,R,T}) where {D,R,T}
-    n = mapreduce(i->size(A[i,1],1), +, 1:nblocks(A,1))
+    n = mapreduce(i->size(A[1,i],2), +, 1:nblocks(A,2))
     JotSpace(eltype(D),n)
 end
 function Base.range(A::JotOpBlock{D,R,T}) where {D,R,T}
-    n = mapreduce(i->size(A[1,i],2), +, 1:nblocks(A,2))
+    n = mapreduce(i->size(A[i,1],1), +, 1:nblocks(A,1))
     JotSpace(eltype(R),n)
 end
 
@@ -205,8 +211,10 @@ function LinearAlgebra.mul!(d::AbstractArray, A::JotOpBlock, m::AbstractArray)
         for iblkcol = 1:nblocks(A,2)
             dom1 = domN + 1
             domN = dom1 + size(A[1,iblkcol],2) - 1
-            _m = @view m[dom1:domN]
-            mul!(_d, A[iblkrow,iblkcol], reshape(_m, domain(A[iblkrow,iblkcol])))
+            if !isa(A[iblkrow,iblkcol], JotOpZeroBlock)
+                _m = @view m[dom1:domN]
+                _d .+= A[iblkrow,iblkcol] * reshape(_m, domain(A[iblkrow,iblkcol]))
+            end
         end
     end
     d
@@ -224,8 +232,10 @@ function LinearAlgebra.mul!(m::AbstractArray, B::JotOpAdjoint{T}, d::AbstractArr
         for iblkrow = 1:nblocks(A,1)
             rng1 = rngN + 1
             rngN = rng1 + size(A[iblkrow,1],1) - 1
-            _d = @view d[rng1:rngN]
-            mul!(_m, adjoint(A[iblkrow,iblkcol]), reshape(_d, range(A[iblkrow,iblkcol])))
+            if !isa(A[iblkrow,iblkcol], JotOpZeroBlock)
+                _d = @view d[rng1:rngN]
+                _m .+= adjoint(A[iblkrow,iblkcol]) * reshape(_d, range(A[iblkrow,iblkcol]))
+            end
         end
     end
     m
@@ -234,14 +244,14 @@ end
 Base.adjoint(A::JotOpBlock{D,R,T}) where {D,R,T} = JotOpAdjoint(A)
 
 function jacobian(F::JotOpBlock, m::AbstractArray)
-    domrng = Vector{UnitRange}(undef, size(F, 2))
+    domrng = Vector{UnitRange}(undef, nblocks(F, 2))
     domN = 0
-    for i = 1:size(F, 2)
+    for i = 1:nblocks(F, 2)
         dom1 = domN + 1
-        domN = dom1 + size(F[1,iblkcol], 2)
+        domN = dom1 + size(F[1,i], 2) - 1
         domrng[i] = dom1:domN
     end
-    [jacobian(F[i,j], @view(m[domrng[j]])) for i=1:size(F,1), j=1:size(F,2)]
+    JotOpBlock([jacobian(F[i,j], @view(m[domrng[j]])) for i=1:nblocks(F,1), j=1:nblocks(F,2)])
 end
 
 function blockrange(A::JotOpBlock, iblock)
@@ -268,8 +278,9 @@ function setblockdomain!(m, A::JotOpBlock, iblock, mblock)
     m[blockdomain(A,iblock)] .= mblock[:]
 end
 
-export JotOp, JotSpace, domain, getblockdomain, getblockrange, jacobian, jet,
-    nblocks, setblockdomain!, setblockrange!, shape, state
+export Jet, JotOp, JotOpLn, JotOpNl, JotSpace, JotOpZeroBlock, domain,
+    getblockdomain, getblockrange, jacobian, jet, nblocks, setblockdomain!,
+    setblockrange!, shape, state, state!
 
 #
 # test operators

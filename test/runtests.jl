@@ -1,113 +1,251 @@
-# TODO... turn this into actual unit-tests
+using Revise
 
-using Revise, Test
+using JotNew, LinearAlgebra, Test
 
-using JotNew, LinearAlgebra
+function JotOpFoo(diag)
+    df!(d,m;mₒ,diagonal) = d .= diagonal .* m
+    spc = JotSpace(Float64, length(diag))
+    JotOpLn(;df! = df!, df′! = df!, dom = spc, rng = spc, s = (diagonal=diag,))
+end
 
-A = JotOpDiagonal([3.0,4.0])
-@inferred JotOpDiagonal([3.0,4.0])
-@code_warntype JotOpDiagonal([3.0,4.0])
+function JotOpBar(n)
+    f!(d,m;kwargs...) = d .= m.^2
+    df!(δd,δm;kwargs...) = δd .= 2 .* kwargs[:mₒ] .* δm
+    spc = JotSpace(Float64, n)
+    JotOpNl(f! = f!, df! = df!, df′! = df!, dom = spc, rng = spc)
+end
 
-m = [2.0,3.0]
+function JotOpBaz(A)
+    df!(d,m;kwargs...) = d .= kwargs[:matrix] * m
+    df′!(m,d,;kwargs...) = m .= kwargs[:matrix]' * d
+    dom = JotSpace(eltype(A), size(A,2))
+    rng = JotSpace(eltype(A), size(A,1))
+    JotOpLn(;df! = df!, df′! = df′!, dom = dom, rng = rng, s = (matrix=A,))
+end
 
-d_check = [6.0, 12.0]
-d = A*m
-d ≈ d_check
-mul!(d, A, m)
-d ≈ d_check
+@testset "JotSpace, construction, n=$n, T=$T" for n in ((2,),(2,3),(2,3,4)), T in (Float32,Float64,Complex{Float32},Complex{Float64})
+    N = length(n)
+    R = JotSpace(T, n...)
+    @test size(R) == n
+    @test eltype(R) == T
+    @test eltype(typeof(R)) == T
+    @test ndims(R) == N
+end
 
-A₁ = JotOpDiagonal([2.0,3.0])
-A₂ = JotOpDiagonal([4.0,5.0])
+@testset "JotSpace, operations, n=$n, T=$T" for n in ((2,),(2,3),(2,3,4)), T in (Float32,Float64,Complex{Float32},Complex{Float64})
+    R = JotSpace(T, n...)
+    N = length(n)
+    x = rand(R)
+    @test eltype(x) == T
+    @test size(x) == n
+    @test ndims(R) == N
+    y = rand(T, n)
+    z = copy(y)[:]
+    @test y ≈ reshape(z,  R)
+    @test ones(R) ≈ ones(T, n)
+    @test size(rand(R)) == size(R)
+    @test zeros(R) ≈ zeros(T, n)
+end
 
-A = A₂ ∘ A₁
-@inferred A₂ ∘ A₁
-@code_warntype A₂ ∘ A₁
-d = A*m
-@code_warntype A*m
-mul!(d,A,m)
-@inferred mul!(d,A,m)
-@code_warntype mul!(d,A,m) # function is not inferred
-d_check = A₂*(A₁*m)
-d ≈ d_check
+@testset "Jet, construction" begin
+    f!(d,m;kwargs...) = d .= m.^2
+    df!(δd,δm;kwargs...) = δd .= 2 .* kwargs[:mₒ] .* δm
+    ✈ = Jet(;
+        dom = JotSpace(Float64,20),
+        rng = JotSpace(Float64,10,2),
+        f! = f!,
+        df! = df!,
+        df′! = df!)
+    @test domain(✈) == JotSpace(Float64,20)
+    @test range(✈) == JotSpace(Float64,10,2)
+    @test state(✈)[:mₒ] ≈ zeros(eltype(domain(✈)),ntuple(i->0,ndims(domain(✈))))
+    mₒ = rand(domain(✈))
+    state!(✈, (mₒ=mₒ,))
+    s = state(✈)
+    @test s.mₒ ≈ mₒ
+    @test shape(✈, 1) == (10,2)
+    @test shape(✈, 2) == (20,)
+    @test shape(✈) == ((10,2),(20,))
+    @test size(✈, 1) == 20
+    @test size(✈, 2) == 20
+end
 
-A₃ = JotOpDiagonal([6.0,7.0])
-A = A₃ ∘ A₂ ∘ A₁
-d = A*m
-d_check = A₃*(A₂*(A₁*m))
-d ≈ d_check
+@testset "linear operator" begin
+    diag = rand(10)
+    A = JotOpFoo(diag)
+    m = rand(10)
+    d = A*m
+    @test d ≈ diag .* m
+    a = A'*d
+    @test a ≈ diag .* d
 
-A = [A₁ A₂ ; A₂ A₁]
-@code_warntype [A₁ A₂ ; A₂ A₁] # function is not inferred
+    d .= 0
+    mul!(d, A, m)
+    @test d ≈ diag .* m
+    a .= 0
+    mul!(a, A', d)
+    @test a ≈ diag .* d
 
-A.ops[1,1]
-A[1,1]
-@inferred A[1,1]
-@code_warntype A[1,1]
+    @test size(A) == (10,10)
+    @test shape(A) == ((10,), (10,))
+    @test size(A,1) == 10
+    @test size(A,2) == 10
+    @test shape(A,1) == (10,)
+    @test shape(A,2) == (10,)
+    @test domain(A) == JotSpace(Float64,10)
+    @test range(A) == JotSpace(Float64,10)
+end
 
-domain(A[1,1])
-@inferred domain(A[1,1])
-@code_warntype domain(A[1,1])
-domain(A)
-@inferred domain(A)
-@code_warntype domain(A)
+@testset "nonlinear operator" begin
+    n = 10
+    F = JotOpBar(n)
+    m = rand(domain(F))
+    d = F*m
+    @test d ≈ m.^2
+    d .= 0
+    mul!(d, F, m)
+    @test d ≈ m.^2
+    J = jacobian(F, m)
+    @test state(J).mₒ ≈ m
+    d = J*m
+    @test d ≈ 2 .* state(J).mₒ .* m
+    a = J'*d
+    @test a ≈ 2 .* state(J).mₒ .* d
 
-shape(A,1)
-@inferred shape(A,1)
-@code_warntype shape(A,1)
-size(A,1)
-@inferred size(A,1)
-@code_warntype size(A,1)
+    @test size(F) == (10,10)
+    @test shape(F) == ((10,), (10,))
+    @test size(F,1) == 10
+    @test size(F,2) == 10
+    @test shape(F,1) == (10,)
+    @test shape(F,2) == (10,)
+    @test domain(F) == JotSpace(Float64,10)
+    @test range(F) == JotSpace(Float64,10)
+end
 
-m = [1.0,2.0,3.0,4.0]
-length(m)
+@testset "composition, linear" begin
+    d₁,d₂,d₃,d₄ = map(i->rand(10), 1:4)
+    A₁,A₂,A₃,A₄ = map(d->JotOpBaz(rand(10,10)), (d₁,d₂,d₃,d₄))
+    B₁,B₂,B₃,B₄ = map(A->state(A).matrix, (A₁,A₂,A₃,A₄))
+    A₂₁ = A₂ ∘ A₁
+    A₃₂₁ = A₃ ∘ A₂ ∘ A₁
+    A₄₃₂₁ = A₄ ∘ A₃ ∘ A₂ ∘ A₁
+    m = rand(domain(A₁))
+    d = A₂₁*m
+    @test d ≈ B₂ * ( B₁ * m )
+    d = A₃₂₁*m
+    @test d ≈ B₃ * (B₂ * ( B₁ * m))
+    d = A₄₃₂₁*m
+    @test d ≈ B₄ * (B₃ * ( B₂ * ( B₁ * m)))
 
-d = A*m
-@inferred A*m
-@code_warntype A*m
-d_check = [A₁*m[1:2] + A₂*m[3:4] ; A₂*m[1:2] + A₁*m[3:4]]
-d ≈ d_check
+    a = A₂₁'*d
+    @test a ≈ (B₁' * ( B₂' * d))
+    a = A₃₂₁'*d
+    @test a ≈ (B₁' * ( B₂' * ( B₃' * d )))
+    a = A₄₃₂₁'*d
+    @test a ≈ (B₁' * ( B₂' * ( B₃' * ( B₄' * d))))
 
-d
-d_check
+    @test domain(A₄₃₂₁) == JotSpace(Float64, 10)
+end
 
-mul!(d,A,m)
-@code_warntype mul!(d,A,m)
-d ≈ d_check
+@testset "composition, nonlinear" begin
+    F₁,F₂,F₃,F₄ = map(i->JotOpBar(10), 1:4)
+    F₂₁ = F₂ ∘ F₁
+    F₃₂₁ = F₃ ∘ F₂ ∘ F₁
+    F₄₃₂₁ = F₄ ∘ F₃ ∘ F₂ ∘ F₁
+    m = rand(domain(F₁))
+    d = F₂₁ * m
+    @test d ≈ F₂*(F₁*m)
+    d = F₃₂₁*m
+    @test d ≈ F₃*( F₂ * ( F₁ * m))
+    d = F₄₃₂₁ * m
+    @test d ≈ F₄ * ( F₃ * ( F₂ * ( F₁ * m)))
 
-B = JotOpDiagonal([2.0,3.0,4.0,2.0])
-C = B ∘ A
-d = C*m
-@code_warntype C*m
+    m = rand(10)
+    J₁ = jacobian(F₁, m)
+    J₂₁ = jacobian(F₂, F₁*m) ∘ J₁
+    J₃₂₁ = jacobian(F₃, (F₂ ∘ F₁) * m) ∘ jacobian(F₂, F₁ * m) ∘ J₁
+    J₄₃₂₁ = jacobian(F₄, (F₃ ∘ F₂ ∘ F₁) * m) ∘ jacobian(F₃, (F₂ ∘ F₁) * m) ∘ jacobian(F₂, F₁ * m) ∘ J₁
 
-d_check = B*(A*m)
-d ≈ d_check
+    L₁ = jacobian(F₁, m)
+    L₂₁ = jacobian(F₂₁, m)
+    L₃₂₁ = jacobian(F₃₂₁, m)
+    L₄₃₂₁ = jacobian(F₄₃₂₁, m)
 
-A = [A₁∘A₂ A₁∘A₂ ; A₁∘A₂ A₁∘A₂]
-domain(A)
-m=rand(domain(A))
-d = A*m
-@inferred A*m
-@code_warntype A*m
-d_check = zeros(Float64,4)
-d_check[1:2] .= A₁*(A₂*m[1:2]) .+ A₁*(A₂*m[3:4])
-d_check[3:4] .= A₁*(A₂*m[1:2]) .+ A₁*(A₂*m[3:4])
-d ≈ d_check
+    δm = rand(10)
+    @test J₁ * δm ≈ L₁ * δm
+    @test J₂₁ * δm ≈ L₂₁ * δm
+    @test J₃₂₁ * δm ≈ L₃₂₁ * δm
+    @test J₄₃₂₁ * δm ≈ L₄₃₂₁ * δm
+end
 
-B₁ = A₁'
-@inferred adjoint(A₁)
-@code_warntype adjoint(A₁)
+@testset "composition, linear+nonlinear" begin
+    d₁,d₄ = map(i->rand(10), 1:2)
+    A₂,A₄ = map(d->JotOpFoo(d), (d₁,d₄))
+    F₁,F₃ = map(i->JotOpBar(10), 1:2)
+    F₂₁ = A₂ ∘ F₁
+    F₃₂₁ = F₃ ∘ A₂ ∘ F₁
+    F₄₃₂₁ = A₄ ∘ F₃ ∘ A₂ ∘ F₁
+    m = rand(domain(F₁))
+    d = F₂₁ * m
+    @test d ≈ A₂*(F₁*m)
+    d = F₃₂₁*m
+    @test d ≈ F₃*( A₂ * ( F₁ * m))
+    d = F₄₃₂₁ * m
+    @test d ≈ A₄ * ( F₃ * ( A₂ * ( F₁ * m)))
 
-m = rand(domain(B₁))
-d = B₁*m
-d_check = A₁*m
-d ≈ d_check
+    m = rand(10)
+    J₁ = jacobian(F₁, m)
+    J₂₁ = A₂ ∘ jacobian(F₁, m)
+    J₃₂₁ = jacobian(F₃, A₂*(F₁*m)) ∘ A₂ ∘ jacobian(F₁, m)
+    J₄₃₂₁ = A₄ ∘ jacobian(F₃, A₂*(F₁*m)) ∘ A₂ ∘ jacobian(F₁, m)
 
-B = A'
-@inferred adjoint(A)
-@code_warntype adjoint(A)
+    L₁ = jacobian(F₁, m)
+    L₂₁ = jacobian(F₂₁, m)
+    L₃₂₁ = jacobian(F₃₂₁, m)
+    L₄₃₂₁ = jacobian(F₄₃₂₁, m)
 
-domain(B)
-@code_warntype domain(B)
-m = rand(domain(B))
-@code_warntype rand(domain(B))
-d = B*m
+    δm = rand(10)
+    @test J₁ * δm ≈ L₁ * δm
+    @test J₂₁ * δm ≈ L₂₁ * δm
+    @test J₃₂₁ * δm ≈ L₃₂₁ * δm
+    @test J₄₃₂₁ * δm ≈ L₄₃₂₁ * δm
+end
+
+@testset "block operator" begin
+    B₁₁,B₁₃,B₁₄,B₂₁,B₂₃,B₂₄,B₃₂,B₃₃ = map(i->rand(10,10), 1:8)
+    A₁₁,A₁₃,A₁₄,A₂₁,A₂₃,A₂₄,A₃₂,A₃₃ = map(B->JotOpBaz(B), (B₁₁,B₁₃,B₁₄,B₂₁,B₂₃,B₂₄,B₃₂,B₃₃))
+    F₁₂,F₂₃,F₃₁ = map(i->JotOpBar(10), 1:3)
+    Z₂₂,Z₃₄ = map(i->JotOpZeroBlock(JotSpace(Float64,10), JotSpace(Float64,10)), 1:2)
+
+    C₂₄ = A₂₄ ∘ JotOpBar(10)
+
+    F = [A₁₁ F₁₂ A₁₃ A₁₄;
+         A₂₁ Z₂₂ F₂₃ C₂₄;
+         F₃₁ A₃₂ A₃₃ Z₃₄]
+
+    m = rand(domain(F))
+    d = F*m
+    @test d[1:10]  ≈ B₁₁ * m[1:10] + F₁₂ * m[11:20] + B₁₃ * m[21:30] + B₁₄ * m[31:40]
+    @test d[11:20] ≈ B₂₁ * m[1:10]                  + F₂₃ * m[21:30] + C₂₄ * m[31:40]
+    @test d[21:30] ≈ F₃₁ * m[1:10] + B₃₂ * m[11:20] + B₃₃ * m[21:30]
+
+    J = jacobian(F,m)
+    δm = rand(domain(J))
+    δd = J * δm
+
+    J₁₂ = jacobian(F₁₂,m[11:20])
+    J₂₃ = jacobian(F₂₃,m[21:30])
+    J₂₄ = jacobian(C₂₄,m[31:40])
+    J₃₁ = jacobian(F₃₁,m[1:10])
+
+    L = [A₁₁ J₁₂ A₁₃ A₁₄;
+         A₂₁ Z₂₂ J₂₃ J₂₄;
+         J₃₁ A₃₂ A₃₃ Z₃₄]
+
+    @test δd ≈ L*δm
+    @test L'*δd ≈ J'*δd
+
+    foo(i,j) = JotOpBaz(rand(2,2))
+    A = [foo(i,j) for i=1:3, j=1:4]
+    @test_broken @test isa(A, JotOp)
+end
