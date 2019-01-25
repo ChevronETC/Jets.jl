@@ -3,24 +3,24 @@ using Revise
 using JotNew, LinearAlgebra, Test
 
 function JotOpFoo(diag)
-    df!(d,m;mₒ,diagonal) = d .= diagonal .* m
+    df!(d,m;diagonal,kwargs...) = d .= diagonal .* m
     spc = JotSpace(Float64, length(diag))
     JotOpLn(;df! = df!, df′! = df!, dom = spc, rng = spc, s = (diagonal=diag,))
 end
 
 function JotOpBar(n)
-    f!(d,m;kwargs...) = d .= m.^2
-    df!(δd,δm;kwargs...) = δd .= 2 .* kwargs[:mₒ] .* δm
+    f!(d,m) = d .= m.^2
+    df!(δd,δm;mₒ,kwargs...) = δd .= 2 .* mₒ .* δm
     spc = JotSpace(Float64, n)
     JotOpNl(f! = f!, df! = df!, df′! = df!, dom = spc, rng = spc)
 end
 
 function JotOpBaz(A)
-    df!(d,m;kwargs...) = d .= kwargs[:matrix] * m
-    df′!(m,d,;kwargs...) = m .= kwargs[:matrix]' * d
+    df!(d,m;A,kwargs...) = d .= A * m
+    df′!(m,d;A,kwargs...) = m .= A' * d
     dom = JotSpace(eltype(A), size(A,2))
     rng = JotSpace(eltype(A), size(A,1))
-    JotOpLn(;df! = df!, df′! = df′!, dom = dom, rng = rng, s = (matrix=A,))
+    JotOpLn(;df! = df!, df′! = df′!, dom = dom, rng = rng, s = (A=A,))
 end
 
 @testset "JotSpace, construction, n=$n, T=$T" for n in ((2,),(2,3),(2,3,4)), T in (Float32,Float64,Complex{Float32},Complex{Float64})
@@ -48,21 +48,26 @@ end
 end
 
 @testset "Jet, construction" begin
-    f!(d,m;kwargs...) = d .= m.^2
-    df!(δd,δm;kwargs...) = δd .= 2 .* kwargs[:mₒ] .* δm
+    f!(d,m;a) = d .= a .* m.^2
+    df!(δd,δm;a,mₒ) = δd .= 2 .* a .* mₒ .* δm
+    a = rand(20)
     ✈ = Jet(;
         dom = JotSpace(Float64,20),
         rng = JotSpace(Float64,10,2),
         f! = f!,
         df! = df!,
-        df′! = df!)
+        df′! = df!,
+        s = (a=a,))
     @test domain(✈) == JotSpace(Float64,20)
     @test range(✈) == JotSpace(Float64,10,2)
-    @test state(✈)[:mₒ] ≈ zeros(eltype(domain(✈)),ntuple(i->0,ndims(domain(✈))))
+    @test point(✈) ≈ zeros(eltype(domain(✈)),ntuple(i->0,ndims(domain(✈))))
     mₒ = rand(domain(✈))
-    state!(✈, (mₒ=mₒ,))
+    point!(✈, mₒ)
+    @test point(✈) ≈ mₒ
+    a .= rand(20)
+    state!(✈, (a=a,))
     s = state(✈)
-    @test s.mₒ ≈ mₒ
+    @test s.a ≈ a
     @test shape(✈, 1) == (10,2)
     @test shape(✈, 2) == (20,)
     @test shape(✈) == ((10,2),(20,))
@@ -106,11 +111,12 @@ end
     mul!(d, F, m)
     @test d ≈ m.^2
     J = jacobian(F, m)
-    @test state(J).mₒ ≈ m
+    @test point(J) ≈ m
+    @test point(F) ≈ m
     d = J*m
-    @test d ≈ 2 .* state(J).mₒ .* m
+    @test d ≈ 2 .* point(J) .* m
     a = J'*d
-    @test a ≈ 2 .* state(J).mₒ .* d
+    @test a ≈ 2 .* point(J) .* d
 
     @test size(F) == (10,10)
     @test shape(F) == ((10,), (10,))
@@ -125,7 +131,7 @@ end
 @testset "composition, linear" begin
     d₁,d₂,d₃,d₄ = map(i->rand(10), 1:4)
     A₁,A₂,A₃,A₄ = map(d->JotOpBaz(rand(10,10)), (d₁,d₂,d₃,d₄))
-    B₁,B₂,B₃,B₄ = map(A->state(A).matrix, (A₁,A₂,A₃,A₄))
+    B₁,B₂,B₃,B₄ = map(A->state(A).A, (A₁,A₂,A₃,A₄))
     A₂₁ = A₂ ∘ A₁
     A₃₂₁ = A₃ ∘ A₂ ∘ A₁
     A₄₃₂₁ = A₄ ∘ A₃ ∘ A₂ ∘ A₁
@@ -247,5 +253,5 @@ end
 
     foo(i,j) = JotOpBaz(rand(2,2))
     A = [foo(i,j) for i=1:3, j=1:4]
-    @test_broken @test isa(A, JotOp)
+    #@test_broken @test isa(A, JotOp)
 end

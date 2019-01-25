@@ -39,12 +39,13 @@ end
 
 jot_missing(m) = error("not implemented")
 
-mutable struct Jet{D<:JotSpace,R<:JotSpace,F<:Function,DF<:Function,DF′<:Function,S<:NamedTuple}
+mutable struct Jet{D<:JotSpace,R<:JotSpace,F<:Function,DF<:Function,DF′<:Function,M<:AbstractArray,S<:NamedTuple}
     dom::D
     rng::R
     f!::F
     df!::DF
     df′!::DF′
+    mₒ::M
     s::S
 end
 function Jet(;
@@ -54,8 +55,7 @@ function Jet(;
         df! = jot_missing,
         df′! = jot_missing,
         s = NamedTuple())
-    s = merge(s, (mₒ=Array{eltype(dom)}(undef, ntuple(i->0,ndims(dom))),))
-    Jet(dom, rng, f!, df!, df′!, s)
+    Jet(dom, rng, f!, df!, df′!, Array{eltype(dom)}(undef, ntuple(i->0,ndims(dom))), s)
 end
 
 abstract type JotOp end
@@ -78,9 +78,13 @@ domain(jet::Jet) = jet.dom
 Base.range(jet::Jet) = jet.rng
 state(jet::Jet) = jet.s
 state!(jet, s) = jet.s = merge(jet.s, s)
+point(jet::Jet) = jet.mₒ
+point!(jet::Jet, mₒ::AbstractArray) = jet.mₒ = mₒ
 
 jet(A::JotOp) = A.jet
 jet(A::JotOpAdjoint) = jet(A.op)
+point(F::JotOp) = point(jet(F))
+point!(F::JotOpNl, mₒ::AbstractArray) = point!(jet(F), mₒ)
 state(A::JotOp) = state(jet(A))
 state!(A::JotOp, s) = state!(jet(A), s)
 
@@ -105,7 +109,7 @@ Base.size(A::Union{Jet,JotOp}, i) = prod(shape(A, i))
 Base.size(A::Union{Jet,JotOp}) = (size(A, 1), size(A, 2))
 
 function jacobian(F::JotOpNl, mₒ::AbstractArray)
-    state!(F, merge(state(F), (mₒ=mₒ,)))
+    point!(F, mₒ)
     JotOpLn(jet(F))
 end
 jacobian(A::JotOpLn, mₒ::AbstractArray) = A
@@ -114,8 +118,8 @@ Base.adjoint(A::JotOpLn) = JotOpAdjoint(A)
 Base.adjoint(A::JotOpAdjoint) = A.op
 
 LinearAlgebra.mul!(d::AbstractArray, F::JotOpNl, m::AbstractArray) = jet(F).f!(d, m; state(F)...)
-LinearAlgebra.mul!(d::AbstractArray, A::JotOpLn, m::AbstractArray) = jet(A).df!(d, m; state(A)...)
-LinearAlgebra.mul!(m::AbstractArray, A::JotOpAdjoint{T}, d::AbstractArray) where {T<:JotOpLn} = jet(A).df′!(m, d; state(A)...)
+LinearAlgebra.mul!(d::AbstractArray, A::JotOpLn, m::AbstractArray) = jet(A).df!(d, m; mₒ=point(A), state(A)...)
+LinearAlgebra.mul!(m::AbstractArray, A::JotOpAdjoint{T}, d::AbstractArray) where {T<:JotOpLn} = jet(A).df′!(m, d; mₒ=point(A), state(A)...)
 
 Base.:*(A::JotOp, m::AbstractArray) = mul!(zeros(range(A)), A, m)
 
@@ -130,10 +134,9 @@ struct JotOpComposite{T<:Tuple, D<:JotSpace, R<:JotSpace} <: JotOp
         new{T,D,R}(ops)
     end
 end
-Base.:∘(A₂::JotOp, A₁::JotOp) = JotOpComposite((A₂, A₁))
-Base.:∘(A₂::JotOp, A₁::JotOpComposite) = JotOpComposite((A₂, A₁.ops...))
-Base.:∘(A₂::JotOpComposite, A₁::JotOp) = JotOpComposite((A₂.ops..., A₁))
-Base.:∘(A₂::JotOpComposite, A₁::JotOpComposite) = JotOpComposite((A₂.ops..., A₁.ops...))
+_operators(F::JotOp) = (F,)
+_operators(F::JotOpComposite) = F.ops
+Base.:∘(A₂::JotOp, A₁::JotOp) = JotOpComposite((_operators(A₂)..., _operators(A₁)...))
 
 domain(A::JotOpComposite) = domain(A.ops[end])
 Base.range(A::JotOpComposite) = range(A.ops[1])
@@ -181,10 +184,13 @@ struct JotOpZeroBlock{T,N} <: JotOp
 end
 jacobian(A::JotOpZeroBlock, m) = A
 
+# TODO - I should probably drop these, and export JotOpBlock
+# I don't know how to make this work for array comprehensions!
 Base.hcat(A::JotOp...) = JotOpBlock([A[j] for i=1:1, j=1:length(A)])
 Base.vcat(A::JotOp...) = JotOpBlock([A[i] for i=1:length(A), j=1:1])
 Base.vect(A::JotOp...) = JotOpBlock([A[i] for i=1:length(A), j=1:1])
 Base.hvcat(rows::Tuple{Vararg{Int}}, xs::JotOp...) = JotOpBlock(Base.typed_hvcat(Base.promote_typeof(xs...), rows, xs...))
+
 Base.getindex(A::JotOpBlock, i, j) = A.ops[i,j]
 Base.getindex(A::JotOpAdjoint{T}, i, j) where {T<:JotOpBlock} = A.op.ops[j,i]
 
@@ -279,28 +285,7 @@ function setblockdomain!(m, A::JotOpBlock, iblock, mblock)
 end
 
 export Jet, JotOp, JotOpLn, JotOpNl, JotSpace, JotOpZeroBlock, domain,
-    getblockdomain, getblockrange, jacobian, jet, nblocks, setblockdomain!,
-    setblockrange!, shape, state, state!
-
-#
-# test operators
-#
-
-# linear operator
-function JotOpDiagonal(d)
-    df!(d,m;kwargs...) = d .= kwargs[:diagonal] .* m
-    spc = JotSpace(eltype(d),size(d))
-    JotOpLn(;df! = df!, df′! = df!, dom = spc, rng = spc, s = (diagonal=d,))
-end
-
-# non-linear operator
-function JotOpSquare(n)
-    f!(d,m;kwargs...) = d .= m.^2
-    df!(δd,δm;kwargs...) = δd .= 2 .* kwargs[:mₒ] .* δm
-    spc = JotSpace(Float64, n)
-    JotOpNl(;f! = f!, df! = df!, df′! = df!, dom = spc, rng = spc)
-end
-
-export JotOpDiagonal, JotOpSquare
+    getblockdomain, getblockrange, jacobian, jet, nblocks, point, point!,
+    setblockdomain!, setblockrange!, shape, state, state!
 
 end
