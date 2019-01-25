@@ -184,12 +184,9 @@ struct JotOpZeroBlock{T,N} <: JotOp
 end
 jacobian(A::JotOpZeroBlock, m) = A
 
-# TODO - I should probably drop these, and export JotOpBlock
-# I don't know how to make this work for array comprehensions!
-Base.hcat(A::JotOp...) = JotOpBlock([A[j] for i=1:1, j=1:length(A)])
-Base.vcat(A::JotOp...) = JotOpBlock([A[i] for i=1:length(A), j=1:1])
-Base.vect(A::JotOp...) = JotOpBlock([A[i] for i=1:length(A), j=1:1])
-Base.hvcat(rows::Tuple{Vararg{Int}}, xs::JotOp...) = JotOpBlock(Base.typed_hvcat(Base.promote_typeof(xs...), rows, xs...))
+macro blockop(ex)
+    :(JotOpBlock($(esc(ex))))
+end
 
 Base.getindex(A::JotOpBlock, i, j) = A.ops[i,j]
 Base.getindex(A::JotOpAdjoint{T}, i, j) where {T<:JotOpBlock} = A.op.ops[j,i]
@@ -260,31 +257,31 @@ function jacobian(F::JotOpBlock, m::AbstractArray)
     JotOpBlock([jacobian(F[i,j], @view(m[domrng[j]])) for i=1:nblocks(F,1), j=1:nblocks(F,2)])
 end
 
-function blockrange(A::JotOpBlock, iblock)
-    i1 = iblock == 1 ? 1 : mapreduce(i->size(A[i,1],1), +, 1:(iblock-1)) + 1
-    i2 = i1 + size(A[i,1],1) - 1
+function blockrange(A::JotOpBlock, iblock::Integer)
+    i1 = (iblock == 1 ? 1 : mapreduce(i->size(A[i,1],1), +, 1:(iblock-1)) + 1)
+    i2 = i1 + size(A[iblock,1],1) - 1
     i1:i2
 end
 
-getblockrange(d, A::JotOpBlock, iblock) = reshape(d[blockrange(A,iblock)], range(A[i,1]))
+getblockrange(d::AbstractArray, A::JotOpBlock, iblock::Integer) = reshape(d[blockrange(A,iblock)], range(A[iblock,1]))
 
-function setblockrange!(d, A::JotOpBlock, iblock, dblock)
+function setblockrange!(d::AbstractArray, A::JotOpBlock, iblock::Integer, dblock::AbstractArray)
     d[blockrange(A,iblock)] .= dblock[:]
 end
 
-function blockdomain(A::JotOpBlock, iblock)
+function blockdomain(A::JotOpBlock, iblock::Integer)
     i1 = iblock == 1 ? 1 : mapreduce(i->size(A[1,i],2), +, 1(iblock-1)) + 1
     i2 = i1 + size(A[1,iblock],1) - 1
     i1:i2
 end
 
-getblockdomain(m, A::JotOpBlock, iblock) = reshape(m[blockdomain(A,iblock)], domain(A[1,i]))
+getblockdomain(m::AbstractArray, A::JotOpBlock, iblock::Integer) = reshape(m[blockdomain(A,iblock)], domain(A[1,iblock]))
 
-function setblockdomain!(m, A::JotOpBlock, iblock, mblock)
+function setblockdomain!(m::AbstractArray, A::JotOpBlock, iblock::Integer, mblock::AbstractArray)
     m[blockdomain(A,iblock)] .= mblock[:]
 end
 
-export Jet, JotOp, JotOpLn, JotOpNl, JotSpace, JotOpZeroBlock, domain,
+export Jet, JotOp, JotOpLn, JotOpNl, JotSpace, JotOpZeroBlock, @blockop, domain,
     getblockdomain, getblockrange, jacobian, jet, nblocks, point, point!,
     setblockdomain!, setblockrange!, shape, state, state!
 

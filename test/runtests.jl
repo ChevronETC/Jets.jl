@@ -1,5 +1,3 @@
-using Revise
-
 using JotNew, LinearAlgebra, Test
 
 function JotOpFoo(diag)
@@ -225,9 +223,15 @@ end
 
     C₂₄ = A₂₄ ∘ JotOpBar(10)
 
-    F = [A₁₁ F₁₂ A₁₃ A₁₄;
+    G = [A₁₁ F₁₂ A₁₃ A₁₄;
          A₂₁ Z₂₂ F₂₃ C₂₄;
          F₃₁ A₃₂ A₃₃ Z₃₄]
+
+    @test isa(@blockop(G), JotNew.JotOpBlock)
+
+    F = @blockop [A₁₁ F₁₂ A₁₃ A₁₄;
+                  A₂₁ Z₂₂ F₂₃ C₂₄;
+                  F₃₁ A₃₂ A₃₃ Z₃₄]
 
     m = rand(domain(F))
     d = F*m
@@ -244,13 +248,30 @@ end
     J₂₄ = jacobian(C₂₄,m[31:40])
     J₃₁ = jacobian(F₃₁,m[1:10])
 
-    L = [A₁₁ J₁₂ A₁₃ A₁₄;
-         A₂₁ Z₂₂ J₂₃ J₂₄;
-         J₃₁ A₃₂ A₃₃ Z₃₄]
+    L = @blockop [A₁₁ J₁₂ A₁₃ A₁₄;
+                  A₂₁ Z₂₂ J₂₃ J₂₄;
+                  J₃₁ A₃₂ A₃₃ Z₃₄]
 
     @test δd ≈ L*δm
     @test L'*δd ≈ J'*δd
 
+    @test getblockrange(δd, L, 2) ≈ δd[11:20]
+    setblockrange!(δd, L, 2, π*ones(10))
+    @test getblockrange(δd, L, 2) ≈ π*ones(10)
+
+    @test getblockrange(d, F, 2) ≈ d[11:20]
+    setblockrange!(d, F, 2, π*ones(10))
+    @test getblockrange(d, F, 2) ≈ π*ones(10)
+
+    @test getblockdomain(δm, L, 2) ≈ δm[11:20]
+    setblockdomain!(δm, L, 2, π*ones(10))
+    @test getblockdomain(δm, L, 2) ≈ π*ones(10)
+
+    @test getblockdomain(m, F, 2) ≈ m[11:20]
+    setblockdomain!(m, F, 2, π*ones(10))
+    @test getblockdomain(m, F, 2) ≈ π*ones(10)
+
+    # how to handle array comprehensions of operators
     foo(i,j) = JotOpBaz(rand(2,2))
     A = [foo(i,j) for i=1:3, j=1:4]
     #@test_broken @test isa(A, JotOp)
