@@ -68,6 +68,7 @@ JotOpNl(;kwargs...) = JotOpNl(Jet(;kwargs...))
 struct JotOpLn{T<:Jet} <: JotOp
     jet::T
 end
+JotOpLn(jet::Jet, mₒ::AbstractArray) = begin point!(jet, mₒ); JotOpLn(jet) end
 JotOpLn(;kwargs...) = JotOpLn(Jet(;kwargs...))
 
 struct JotOpAdjoint{T<:JotOp} <: JotOp
@@ -83,8 +84,8 @@ point!(jet::Jet, mₒ::AbstractArray) = jet.mₒ = mₒ
 
 jet(A::JotOp) = A.jet
 jet(A::JotOpAdjoint) = jet(A.op)
-point(F::JotOp) = point(jet(F))
-point!(F::JotOpNl, mₒ::AbstractArray) = point!(jet(F), mₒ)
+point(A::JotOpLn) = point(jet(A))
+point(A::JotOpAdjoint) = point(jet(A.op))
 state(A::JotOp) = state(jet(A))
 state!(A::JotOp, s) = state!(jet(A), s)
 
@@ -109,8 +110,7 @@ Base.size(A::Union{Jet,JotOp}, i) = prod(shape(A, i))
 Base.size(A::Union{Jet,JotOp}) = (size(A, 1), size(A, 2))
 
 function jacobian(F::JotOpNl, mₒ::AbstractArray)
-    point!(F, mₒ)
-    JotOpLn(jet(F))
+    JotOpLn(jet(F), mₒ)
 end
 jacobian(A::JotOpLn, mₒ::AbstractArray) = A
 
@@ -282,7 +282,7 @@ function setblockdomain!(m::AbstractArray, A::JotOpBlock, iblock::Integer, mbloc
 end
 
 export Jet, JotOp, JotOpLn, JotOpNl, JotSpace, JotOpZeroBlock, @blockop, domain,
-    getblockdomain, getblockrange, jacobian, jet, nblocks, point, point!,
+    getblockdomain, getblockrange, jacobian, jet, nblocks, point,
     setblockdomain!, setblockrange!, shape, state, state!
 
 end

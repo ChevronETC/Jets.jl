@@ -60,7 +60,7 @@ end
     @test range(✈) == JotSpace(Float64,10,2)
     @test point(✈) ≈ zeros(eltype(domain(✈)),ntuple(i->0,ndims(domain(✈))))
     mₒ = rand(domain(✈))
-    point!(✈, mₒ)
+    JotNew.point!(✈, mₒ)
     @test point(✈) ≈ mₒ
     a .= rand(20)
     state!(✈, (a=a,))
@@ -110,7 +110,6 @@ end
     @test d ≈ m.^2
     J = jacobian(F, m)
     @test point(J) ≈ m
-    @test point(F) ≈ m
     d = J*m
     @test d ≈ 2 .* point(J) .* m
     a = J'*d
