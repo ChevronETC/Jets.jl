@@ -109,9 +109,7 @@ shape(A::AbstractMatrix) = size(A)
 Base.size(A::Union{Jet,Jop}, i) = prod(shape(A, i))
 Base.size(A::Union{Jet,Jop}) = (size(A, 1), size(A, 2))
 
-function jacobian(F::JopNl, mₒ::AbstractArray)
-    JopLn(jet(F), mₒ)
-end
+jacobian(F::JopNl, mₒ::AbstractArray) = JopLn(jet(F), mₒ)
 jacobian(A::JopLn, mₒ::AbstractArray) = A
 
 Base.adjoint(A::JopLn) = JopAdjoint(A)
