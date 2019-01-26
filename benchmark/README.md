@@ -3,12 +3,12 @@ We use [PkgBenchmark.jl](http://github.com/juliaCI/PkgBenchmark.jl) which can be
 installed using `Pkg.add("PkgBenchmark")`.  To run the benchmarks:
 ```julia
 using PkgBenchmark
-results=benchmarkpkg("JotNew")
+results=benchmarkpkg("Jets")
 export_markdown("results.md", results)
 ```
 In order to compare the benchmarks against a different version:
 ```julia
-results=judge("JotNew", "e1d4076")
+results=judge("Jets", "e1d4076")
 export_markdown("results.md", results)
 ```
 where `e1d4076` is a Git SHA.  To run a specific benchmark:

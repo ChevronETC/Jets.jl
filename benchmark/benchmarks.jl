@@ -1,21 +1,21 @@
-using BenchmarkTools, JotNew, LinearAlgebra
+using BenchmarkTools, Jets, LinearAlgebra
 
 const SUITE = BenchmarkGroup()
 
-s = JotSpace(Float64, 100, 200)
+s = JetSpace(Float64, 100, 200)
 x = rand(20_000)
-SUITE["JotSpace"] = BenchmarkGroup()
-SUITE["JotSpace"]["construct"] = @benchmarkable JotSpace(Float64, 2, 3)
-SUITE["JotSpace"]["size"] = @benchmarkable size($s)
-SUITE["JotSpace"]["eltype"] = @benchmarkable eltype($s)
-SUITE["JotSpace"]["ndims"] = @benchmarkable ndims($s)
-SUITE["JotSpace"]["rand"] = @benchmarkable rand($s)
-SUITE["JotSpace"]["zeros"] = @benchmarkable zeros($s)
-SUITE["JotSpace"]["ones"] = @benchmarkable ones($s)
-SUITE["JotSpace"]["reshape"] = @benchmarkable reshape($x, $s)
+SUITE["JetSpace"] = BenchmarkGroup()
+SUITE["JetSpace"]["construct"] = @benchmarkable JetSpace(Float64, 2, 3)
+SUITE["JetSpace"]["size"] = @benchmarkable size($s)
+SUITE["JetSpace"]["eltype"] = @benchmarkable eltype($s)
+SUITE["JetSpace"]["ndims"] = @benchmarkable ndims($s)
+SUITE["JetSpace"]["rand"] = @benchmarkable rand($s)
+SUITE["JetSpace"]["zeros"] = @benchmarkable zeros($s)
+SUITE["JetSpace"]["ones"] = @benchmarkable ones($s)
+SUITE["JetSpace"]["reshape"] = @benchmarkable reshape($x, $s)
 
-dom = JotSpace(Float64, 20)
-rng = JotSpace(Float64, 10, 2)
+dom = JetSpace(Float64, 20)
+rng = JetSpace(Float64, 10, 2)
 f!(d,m;a) = d .= a .* m.^2
 df!(δd,δm;a,mₒ) = δd .= 2 .* a .* mₒ .* δm
 a = rand(20)
@@ -30,44 +30,44 @@ SUITE["✈"]["state!"] = @benchmarkable state!($✈, (a=$(rand(20)),))
 SUITE["✈"]["shape"] = @benchmarkable shape($✈)
 SUITE["✈"]["size"] = @benchmarkable size($✈)
 
-function JotOpFoo(diag)
+function JopFoo(diag)
     df!(d,m;diagonal,kwargs...) = d .= diagonal .* m
-    spc = JotSpace(Float64, length(diag))
-    JotOpLn(;df! = df!, df′! = df!, dom = spc, rng = spc, s = (diagonal=diag,))
+    spc = JetSpace(Float64, length(diag))
+    JopLn(;df! = df!, df′! = df!, dom = spc, rng = spc, s = (diagonal=diag,))
 end
-A = JotOpFoo(rand(100))
+A = JopFoo(rand(100))
 m = rand(100)
 d = rand(100)
-SUITE["JotOpLn"] = BenchmarkGroup()
-SUITE["JotOpLn"]["construct"] = @benchmarkable JotOpFoo($(rand(100)))
-SUITE["JotOpLn"]["mul!"] = @benchmarkable mul!($d, $A, $m)
-SUITE["JotOpLn"]["mul!,adjoint"] = @benchmarkable mul!($m, $(A)', $d)
-SUITE["JotOpLn"]["mul"] = @benchmarkable $(A) * $(m)
-SUITE["JotOpLn"]["mul, adjoint"] = @benchmarkable $(A)' * $(d)
-SUITE["JotOpLn"]["adjoint"] = @benchmarkable $(A)'
-SUITE["JotOpLn"]["size"] = @benchmarkable size($A)
-SUITE["JotOpLn"]["shape"] = @benchmarkable shape($A)
-SUITE["JotOpLn"]["domain"] = @benchmarkable domain($A)
-SUITE["JotOpLn"]["range"] = @benchmarkable range($A)
+SUITE["JopLn"] = BenchmarkGroup()
+SUITE["JopLn"]["construct"] = @benchmarkable JopFoo($(rand(100)))
+SUITE["JopLn"]["mul!"] = @benchmarkable mul!($d, $A, $m)
+SUITE["JopLn"]["mul!,adjoint"] = @benchmarkable mul!($m, $(A)', $d)
+SUITE["JopLn"]["mul"] = @benchmarkable $(A) * $(m)
+SUITE["JopLn"]["mul, adjoint"] = @benchmarkable $(A)' * $(d)
+SUITE["JopLn"]["adjoint"] = @benchmarkable $(A)'
+SUITE["JopLn"]["size"] = @benchmarkable size($A)
+SUITE["JopLn"]["shape"] = @benchmarkable shape($A)
+SUITE["JopLn"]["domain"] = @benchmarkable domain($A)
+SUITE["JopLn"]["range"] = @benchmarkable range($A)
 
-function JotOpBar(n)
+function JopBar(n)
     f!(d,m) = d .= m.^2
     df!(δd,δm;mₒ,kwargs...) = δd .= 2 .* mₒ .* δm
-    spc = JotSpace(Float64, n)
-    JotOpNl(f! = f!, df! = df!, df′! = df!, dom = spc, rng = spc)
+    spc = JetSpace(Float64, n)
+    JopNl(f! = f!, df! = df!, df′! = df!, dom = spc, rng = spc)
 end
-F = JotOpBar(100)
+F = JopBar(100)
 m = rand(100)
 d = rand(100)
-SUITE["JotOpNl"] = BenchmarkGroup()
-SUITE["JotOpNl"]["construct"] = @benchmarkable JotOpBar(100)
-SUITE["JotOpNl"]["mul!"] = @benchmarkable mul!($d, $F, $m)
-SUITE["JotOpNl"]["mul"] = @benchmarkable $F * $m
-SUITE["JotOpNl"]["jacobian"] = @benchmarkable jacobian($F, $m)
-SUITE["JotOpNl"]["size"] = @benchmarkable size($F)
-SUITE["JotOpNl"]["shape"] = @benchmarkable shape($F)
-SUITE["JotOpNl"]["domain"] = @benchmarkable domain($F)
-SUITE["JotOpNl"]["range"] = @benchmarkable range($F)
+SUITE["JopNl"] = BenchmarkGroup()
+SUITE["JopNl"]["construct"] = @benchmarkable JopBar(100)
+SUITE["JopNl"]["mul!"] = @benchmarkable mul!($d, $F, $m)
+SUITE["JopNl"]["mul"] = @benchmarkable $F * $m
+SUITE["JopNl"]["jacobian"] = @benchmarkable jacobian($F, $m)
+SUITE["JopNl"]["size"] = @benchmarkable size($F)
+SUITE["JopNl"]["shape"] = @benchmarkable shape($F)
+SUITE["JopNl"]["domain"] = @benchmarkable domain($F)
+SUITE["JopNl"]["range"] = @benchmarkable range($F)
 
 G = F ∘ A ∘ F ∘ A
 J = jacobian(G, m)
@@ -84,7 +84,7 @@ SUITE["Composition"]["shape"] = @benchmarkable shape($G)
 SUITE["Composition"]["domain"] = @benchmarkable domain($G)
 SUITE["Composition"]["range"] = @benchmarkable range($G)
 
-_F = [JotOpBar(100) JotOpBar(100) JotOpBar(100) ; JotOpBar(100) JotOpBar(100) JotOpBar(100)]
+_F = [JopBar(100) JopBar(100) JopBar(100) ; JopBar(100) JopBar(100) JopBar(100)]
 F = @blockop _F
 m = rand(domain(F))
 d = rand(range(F))
@@ -107,7 +107,7 @@ SUITE["Block, homogeneous"]["setblockdomain!"] = @benchmarkable setblockdomain!(
 SUITE["Block, homogeneous"]["setblockrange!"] = @benchmarkable setblockrange!($d, $F, 2, $(rand(100)))
 
 x = rand(100)
-_F = [JotOpBar(100) JotOpFoo(x) JotOpBar(100) ; JotOpBar(100) JotOpFoo(x) JotOpBar(100)]
+_F = [JopBar(100) JopFoo(x) JopBar(100) ; JopBar(100) JopFoo(x) JopBar(100)]
 F = @blockop _F
 m = rand(domain(F))
 d = rand(range(F))

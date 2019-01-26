@@ -1,37 +1,37 @@
-using JotNew, LinearAlgebra, Test
+using Jets, LinearAlgebra, Test
 
-function JotOpFoo(diag)
+function JopFoo(diag)
     df!(d,m;diagonal,kwargs...) = d .= diagonal .* m
-    spc = JotSpace(Float64, length(diag))
-    JotOpLn(;df! = df!, df′! = df!, dom = spc, rng = spc, s = (diagonal=diag,))
+    spc = JetSpace(Float64, length(diag))
+    JopLn(;df! = df!, df′! = df!, dom = spc, rng = spc, s = (diagonal=diag,))
 end
 
-function JotOpBar(n)
+function JopBar(n)
     f!(d,m) = d .= m.^2
     df!(δd,δm;mₒ,kwargs...) = δd .= 2 .* mₒ .* δm
-    spc = JotSpace(Float64, n)
-    JotOpNl(f! = f!, df! = df!, df′! = df!, dom = spc, rng = spc)
+    spc = JetSpace(Float64, n)
+    JopNl(f! = f!, df! = df!, df′! = df!, dom = spc, rng = spc)
 end
 
-function JotOpBaz(A)
+function JopBaz(A)
     df!(d,m;A,kwargs...) = d .= A * m
     df′!(m,d;A,kwargs...) = m .= A' * d
-    dom = JotSpace(eltype(A), size(A,2))
-    rng = JotSpace(eltype(A), size(A,1))
-    JotOpLn(;df! = df!, df′! = df′!, dom = dom, rng = rng, s = (A=A,))
+    dom = JetSpace(eltype(A), size(A,2))
+    rng = JetSpace(eltype(A), size(A,1))
+    JopLn(;df! = df!, df′! = df′!, dom = dom, rng = rng, s = (A=A,))
 end
 
-@testset "JotSpace, construction, n=$n, T=$T" for n in ((2,),(2,3),(2,3,4)), T in (Float32,Float64,Complex{Float32},Complex{Float64})
+@testset "JetSpace, construction, n=$n, T=$T" for n in ((2,),(2,3),(2,3,4)), T in (Float32,Float64,Complex{Float32},Complex{Float64})
     N = length(n)
-    R = JotSpace(T, n...)
+    R = JetSpace(T, n...)
     @test size(R) == n
     @test eltype(R) == T
     @test eltype(typeof(R)) == T
     @test ndims(R) == N
 end
 
-@testset "JotSpace, operations, n=$n, T=$T" for n in ((2,),(2,3),(2,3,4)), T in (Float32,Float64,Complex{Float32},Complex{Float64})
-    R = JotSpace(T, n...)
+@testset "JetSpace, operations, n=$n, T=$T" for n in ((2,),(2,3),(2,3,4)), T in (Float32,Float64,Complex{Float32},Complex{Float64})
+    R = JetSpace(T, n...)
     N = length(n)
     x = rand(R)
     @test eltype(x) == T
@@ -50,17 +50,17 @@ end
     df!(δd,δm;a,mₒ) = δd .= 2 .* a .* mₒ .* δm
     a = rand(20)
     ✈ = Jet(;
-        dom = JotSpace(Float64,20),
-        rng = JotSpace(Float64,10,2),
+        dom = JetSpace(Float64,20),
+        rng = JetSpace(Float64,10,2),
         f! = f!,
         df! = df!,
         df′! = df!,
         s = (a=a,))
-    @test domain(✈) == JotSpace(Float64,20)
-    @test range(✈) == JotSpace(Float64,10,2)
+    @test domain(✈) == JetSpace(Float64,20)
+    @test range(✈) == JetSpace(Float64,10,2)
     @test point(✈) ≈ zeros(eltype(domain(✈)),ntuple(i->0,ndims(domain(✈))))
     mₒ = rand(domain(✈))
-    JotNew.point!(✈, mₒ)
+    Jets.point!(✈, mₒ)
     @test point(✈) ≈ mₒ
     a .= rand(20)
     state!(✈, (a=a,))
@@ -75,7 +75,7 @@ end
 
 @testset "linear operator" begin
     diag = rand(10)
-    A = JotOpFoo(diag)
+    A = JopFoo(diag)
     m = rand(10)
     d = A*m
     @test d ≈ diag .* m
@@ -95,13 +95,13 @@ end
     @test size(A,2) == 10
     @test shape(A,1) == (10,)
     @test shape(A,2) == (10,)
-    @test domain(A) == JotSpace(Float64,10)
-    @test range(A) == JotSpace(Float64,10)
+    @test domain(A) == JetSpace(Float64,10)
+    @test range(A) == JetSpace(Float64,10)
 end
 
 @testset "nonlinear operator" begin
     n = 10
-    F = JotOpBar(n)
+    F = JopBar(n)
     m = rand(domain(F))
     d = F*m
     @test d ≈ m.^2
@@ -121,13 +121,13 @@ end
     @test size(F,2) == 10
     @test shape(F,1) == (10,)
     @test shape(F,2) == (10,)
-    @test domain(F) == JotSpace(Float64,10)
-    @test range(F) == JotSpace(Float64,10)
+    @test domain(F) == JetSpace(Float64,10)
+    @test range(F) == JetSpace(Float64,10)
 end
 
 @testset "composition, linear" begin
     d₁,d₂,d₃,d₄ = map(i->rand(10), 1:4)
-    A₁,A₂,A₃,A₄ = map(d->JotOpBaz(rand(10,10)), (d₁,d₂,d₃,d₄))
+    A₁,A₂,A₃,A₄ = map(d->JopBaz(rand(10,10)), (d₁,d₂,d₃,d₄))
     B₁,B₂,B₃,B₄ = map(A->state(A).A, (A₁,A₂,A₃,A₄))
     A₂₁ = A₂ ∘ A₁
     A₃₂₁ = A₃ ∘ A₂ ∘ A₁
@@ -147,11 +147,11 @@ end
     a = A₄₃₂₁'*d
     @test a ≈ (B₁' * ( B₂' * ( B₃' * ( B₄' * d))))
 
-    @test domain(A₄₃₂₁) == JotSpace(Float64, 10)
+    @test domain(A₄₃₂₁) == JetSpace(Float64, 10)
 end
 
 @testset "composition, nonlinear" begin
-    F₁,F₂,F₃,F₄ = map(i->JotOpBar(10), 1:4)
+    F₁,F₂,F₃,F₄ = map(i->JopBar(10), 1:4)
     F₂₁ = F₂ ∘ F₁
     F₃₂₁ = F₃ ∘ F₂ ∘ F₁
     F₄₃₂₁ = F₄ ∘ F₃ ∘ F₂ ∘ F₁
@@ -183,8 +183,8 @@ end
 
 @testset "composition, linear+nonlinear" begin
     d₁,d₄ = map(i->rand(10), 1:2)
-    A₂,A₄ = map(d->JotOpFoo(d), (d₁,d₄))
-    F₁,F₃ = map(i->JotOpBar(10), 1:2)
+    A₂,A₄ = map(d->JopFoo(d), (d₁,d₄))
+    F₁,F₃ = map(i->JopBar(10), 1:2)
     F₂₁ = A₂ ∘ F₁
     F₃₂₁ = F₃ ∘ A₂ ∘ F₁
     F₄₃₂₁ = A₄ ∘ F₃ ∘ A₂ ∘ F₁
@@ -216,17 +216,17 @@ end
 
 @testset "block operator" begin
     B₁₁,B₁₃,B₁₄,B₂₁,B₂₃,B₂₄,B₃₂,B₃₃ = map(i->rand(10,10), 1:8)
-    A₁₁,A₁₃,A₁₄,A₂₁,A₂₃,A₂₄,A₃₂,A₃₃ = map(B->JotOpBaz(B), (B₁₁,B₁₃,B₁₄,B₂₁,B₂₃,B₂₄,B₃₂,B₃₃))
-    F₁₂,F₂₃,F₃₁ = map(i->JotOpBar(10), 1:3)
-    Z₂₂,Z₃₄ = map(i->JotOpZeroBlock(JotSpace(Float64,10), JotSpace(Float64,10)), 1:2)
+    A₁₁,A₁₃,A₁₄,A₂₁,A₂₃,A₂₄,A₃₂,A₃₃ = map(B->JopBaz(B), (B₁₁,B₁₃,B₁₄,B₂₁,B₂₃,B₂₄,B₃₂,B₃₃))
+    F₁₂,F₂₃,F₃₁ = map(i->JopBar(10), 1:3)
+    Z₂₂,Z₃₄ = map(i->JopZeroBlock(JetSpace(Float64,10), JetSpace(Float64,10)), 1:2)
 
-    C₂₄ = A₂₄ ∘ JotOpBar(10)
+    C₂₄ = A₂₄ ∘ JopBar(10)
 
     G = [A₁₁ F₁₂ A₁₃ A₁₄;
          A₂₁ Z₂₂ F₂₃ C₂₄;
          F₃₁ A₃₂ A₃₃ Z₃₄]
 
-    @test isa(@blockop(G), JotNew.JotOpBlock)
+    @test isa(@blockop(G), Jets.JopBlock)
 
     F = @blockop [A₁₁ F₁₂ A₁₃ A₁₄;
                   A₂₁ Z₂₂ F₂₃ C₂₄;
@@ -269,9 +269,4 @@ end
     @test getblockdomain(m, F, 2) ≈ m[11:20]
     setblockdomain!(m, F, 2, π*ones(10))
     @test getblockdomain(m, F, 2) ≈ π*ones(10)
-
-    # how to handle array comprehensions of operators
-    foo(i,j) = JotOpBaz(rand(2,2))
-    A = [foo(i,j) for i=1:3, j=1:4]
-    #@test_broken @test isa(A, JotOp)
 end
