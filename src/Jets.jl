@@ -169,12 +169,12 @@ end
 #
 # Block operator
 #
-struct JopBlock{D<:Jopace,R<:Jopace,T<:Jop} <: Jop
+struct JopBlock{D<:JetSpace,R<:JetSpace,T<:Jop} <: Jop
     ops::Matrix{T}
     function JopBlock(ops::Matrix{T}) where {T<:Jop}
         D = promote_type(ntuple(i->eltype(range(ops[i,1])), size(ops,1))...)
         R = promote_type(ntuple(i->eltype(range(ops[1,i])), size(ops,2))...)
-        new{Jetpace{D,1},JetSpace{R,1},T}(ops)
+        new{JetSpace{D,1},JetSpace{R,1},T}(ops)
     end
 end
 
