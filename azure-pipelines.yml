@@ -1,0 +1,18 @@
+pool:
+  vmImage: 'Ubuntu 16.04'
+
+steps:
+- script: |
+    sudo wget https://julialang-s3.julialang.org/bin/linux/x64/1.0/julia-1.1.0-linux-x86_64.tar.gz
+    sudo mkdir -p /opt/julia
+    sudo tar --strip-components=1 -xzvf julia-1.1.0-linux-x86_64.tar.gz -C /opt/julia
+    cd
+    mkdir -p ${HOME}/.julia/dev
+    cp -r ${BUILD_SOURCESDIRECTORY} ${HOME}/.julia/dev/Jets
+
+    /opt/julia/bin/julia -e 'using Pkg; pkg"dev $(ENV["HOME"])/.julia/dev/Jets)"; pkg"precompile"'
+  displayName: 'Install System'
+
+- script: |
+    /opt/julia/bin/julia -e 'using Pkg; pkg"test Jets"'
+  displayName: 'Run unit-tests'
