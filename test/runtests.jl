@@ -232,6 +232,10 @@ end
                   A₂₁ Z₂₂ F₂₃ C₂₄;
                   F₃₁ A₃₂ A₃₃ Z₃₄]
 
+    @test ones(domain(F)) ≈ ones(40)
+    @test zeros(range(F)) ≈ zeros(30)
+    @test size(rand(range(F))) == (30,)
+
     m = rand(domain(F))
     d = F*m
     @test d[1:10]  ≈ B₁₁ * m[1:10] + F₁₂ * m[11:20] + B₁₃ * m[21:30] + B₁₄ * m[31:40]
@@ -254,19 +258,19 @@ end
     @test δd ≈ L*δm
     @test L'*δd ≈ J'*δd
 
-    @test getblockrange(δd, L, 2) ≈ δd[11:20]
-    setblockrange!(δd, L, 2, π*ones(10))
-    @test getblockrange(δd, L, 2) ≈ π*ones(10)
+    @test block(δd, range(L), 2) ≈ δd[11:20]
+    block!(δd, range(L), 2, π*ones(10))
+    @test block(δd, range(L), 2) ≈ π*ones(10)
 
-    @test getblockrange(d, F, 2) ≈ d[11:20]
-    setblockrange!(d, F, 2, π*ones(10))
-    @test getblockrange(d, F, 2) ≈ π*ones(10)
+    @test block(d, range(F), 2) ≈ d[11:20]
+    block!(d, range(F), 2, π*ones(10))
+    @test block(d, range(F), 2) ≈ π*ones(10)
 
-    @test getblockdomain(δm, L, 2) ≈ δm[11:20]
-    setblockdomain!(δm, L, 2, π*ones(10))
-    @test getblockdomain(δm, L, 2) ≈ π*ones(10)
+    @test block(δm, domain(L), 2) ≈ δm[11:20]
+    block!(δm, domain(L), 2, π*ones(10))
+    @test block(δm, domain(L), 2) ≈ π*ones(10)
 
-    @test getblockdomain(m, F, 2) ≈ m[11:20]
-    setblockdomain!(m, F, 2, π*ones(10))
-    @test getblockdomain(m, F, 2) ≈ π*ones(10)
+    @test block(m, domain(F), 2) ≈ m[11:20]
+    block!(m, domain(F), 2, π*ones(10))
+    @test block(m, domain(F), 2) ≈ π*ones(10)
 end

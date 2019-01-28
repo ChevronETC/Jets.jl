@@ -20,26 +20,32 @@ module Jets
 
 using LinearAlgebra
 
-struct JetSpace{T,N}
+abstract type JetAbstractSpace{T,N} end
+
+Base.eltype(R::JetAbstractSpace{T}) where {T} = T
+Base.eltype(R::Type{JetAbstractSpace{T,N}}) where {T,N} = T
+Base.eltype(R::Type{JetAbstractSpace{T}}) where {T} = T
+Base.ndims(R::JetAbstractSpace{T,N}) where {T,N} = N
+Base.length(R::JetAbstractSpace) = prod(size(R))
+Base.reshape(x::AbstractArray, R::JetAbstractSpace) = reshape(x, size(R))
+
+for f in (:ones, :rand, :zeros)
+    @eval (Base.$f)(R::JetAbstractSpace{T,N}) where {T,N} = ($f)(T,size(R))::Array{T,N}
+end
+
+struct JetSpace{T,N} <: JetAbstractSpace{T,N}
     n::NTuple{N,Int}
 end
 JetSpace(_T::Type{T}, n::Vararg{Int,N}) where {T,N} = JetSpace{T,N}(n)
 JetSpace(_T::Type{T}, n::NTuple{N,Int}) where {T,N} = JetSpace{T,N}(n)
 
 Base.size(R::JetSpace) = R.n
-Base.eltype(R::JetSpace{T}) where {T} = T
 Base.eltype(R::Type{JetSpace{T,N}}) where {T,N} = T
 Base.eltype(R::Type{JetSpace{T}}) where {T} = T
-Base.ndims(R::JetSpace{T,N}) where {T,N} = N
-Base.reshape(x::AbstractArray, R::JetSpace) = reshape(x, size(R))
-
-for f in (:ones, :rand, :zeros)
-    @eval (Base.$f)(R::JetSpace{T}) where {T} = ($f)(T,R.n)
-end
 
 jet_missing(m) = error("not implemented")
 
-mutable struct Jet{D<:JetSpace,R<:JetSpace,F<:Function,DF<:Function,DF′<:Function,M<:AbstractArray,S<:NamedTuple}
+mutable struct Jet{D<:JetAbstractSpace,R<:JetAbstractSpace,F<:Function,DF<:Function,DF′<:Function,M<:AbstractArray,S<:NamedTuple}
     dom::D
     rng::R
     f!::F
@@ -124,7 +130,7 @@ Base.:*(A::Jop, m::AbstractArray) = mul!(zeros(range(A)), A, m)
 #
 # composition
 #
-struct JopComposite{T<:Tuple, D<:JetSpace, R<:JetSpace} <: Jop
+struct JopComposite{T<:Tuple, D<:JetAbstractSpace, R<:JetAbstractSpace} <: Jop
     ops::T
     function JopComposite(ops::T) where {T<:Tuple}
         D = typeof(domain(ops[end]))
@@ -132,9 +138,9 @@ struct JopComposite{T<:Tuple, D<:JetSpace, R<:JetSpace} <: Jop
         new{T,D,R}(ops)
     end
 end
-_operators(F::Jop) = (F,)
-_operators(F::JopComposite) = F.ops
-Base.:∘(A₂::Jop, A₁::Jop) = JopComposite((_operators(A₂)..., _operators(A₁)...))
+operators(F::Jop) = (F,)
+operators(F::JopComposite) = F.ops
+Base.:∘(A₂::Jop, A₁::Jop) = JopComposite((operators(A₂)..., operators(A₁)...))
 
 domain(A::JopComposite) = domain(A.ops[end])
 Base.range(A::JopComposite) = range(A.ops[1])
@@ -167,14 +173,43 @@ end
 #
 # Block operator
 #
-struct JopBlock{D<:JetSpace,R<:JetSpace,T<:Jop} <: Jop
-    ops::Matrix{T}
-    function JopBlock(ops::Matrix{T}) where {T<:Jop}
-        D = promote_type(ntuple(i->eltype(range(ops[i,1])), size(ops,1))...)
-        R = promote_type(ntuple(i->eltype(range(ops[1,i])), size(ops,2))...)
-        new{JetSpace{D,1},JetSpace{R,1},T}(ops)
+struct JetBSpace{T,S<:JetAbstractSpace} <: JetAbstractSpace{T,1}
+    spaces::Vector{S}
+    indices::Vector{UnitRange{Int}}
+    function JetBSpace(spaces)
+        S = mapreduce(typeof, promote_type, spaces)
+        T = eltype(S)
+        indices = [0:0 for i=1:length(spaces)]
+        stop = 0
+        for i = 1:length(indices)
+            start = stop + 1
+            stop = start + length(spaces[i]) - 1
+            indices[i] = start:stop
+        end
+        new{T,S}(spaces, indices)
     end
 end
+
+Base.size(R::JetBSpace) = (R.indices[end][end],)
+Base.eltype(R::Type{JetBSpace{T,N}}) where {T,N} = T
+Base.eltype(R::Type{JetBSpace{T}}) where {T} = T
+
+indices(R::JetBSpace, iblock::Integer) = R.indices[iblock]
+
+block(x::AbstractArray, R::JetBSpace, iblock::Integer) = reshape(x[indices(R, iblock)], R.spaces[iblock])
+block!(x::AbstractArray, R::JetBSpace, iblock::Integer, xblock::AbstractArray) = x[indices(R, iblock)] .= xblock
+
+struct JopBlock{D<:JetBSpace,R<:JetBSpace,T<:Jop} <: Jop
+    dom::D
+    rng::R
+    ops::Matrix{T}
+end
+function JopBlock(ops::Matrix{T}) where {T<:Jop}
+    dom = JetBSpace([domain(ops[1,i]) for i=1:size(ops,2)])
+    rng = JetBSpace([range(ops[i,1]) for i=1:size(ops,1)])
+    JopBlock(dom, rng, ops)
+end
+JopBlock(ops::Vector{T}) where {T<:Jop} = JopBlock(reshape(ops, length(ops), 1))
 
 struct JopZeroBlock{T,N} <: Jop
     dom::JetSpace{T,N}
@@ -189,14 +224,8 @@ end
 Base.getindex(A::JopBlock, i, j) = A.ops[i,j]
 Base.getindex(A::JopAdjoint{T}, i, j) where {T<:JopBlock} = A.op.ops[j,i]
 
-function domain(A::JopBlock{D,R,T}) where {D,R,T}
-    n = mapreduce(i->size(A[1,i],2), +, 1:nblocks(A,2))
-    JetSpace(eltype(D),n)
-end
-function Base.range(A::JopBlock{D,R,T}) where {D,R,T}
-    n = mapreduce(i->size(A[i,1],1), +, 1:nblocks(A,1))
-    JetSpace(eltype(R),n)
-end
+domain(A::JopBlock) = A.dom
+Base.range(A::JopBlock) = A.rng
 
 nblocks(A::JopBlock) = size(A.ops)
 nblocks(A::JopBlock, i) = size(A.ops, i)
@@ -255,32 +284,8 @@ function jacobian(F::JopBlock, m::AbstractArray)
     JopBlock([jacobian(F[i,j], @view(m[domrng[j]])) for i=1:nblocks(F,1), j=1:nblocks(F,2)])
 end
 
-function blockrange(A::JopBlock, iblock::Integer)
-    i1 = (iblock == 1 ? 1 : mapreduce(i->size(A[i,1],1), +, 1:(iblock-1)) + 1)
-    i2 = i1 + size(A[iblock,1],1) - 1
-    i1:i2
-end
-
-getblockrange(d::AbstractArray, A::JopBlock, iblock::Integer) = reshape(d[blockrange(A,iblock)], range(A[iblock,1]))
-
-function setblockrange!(d::AbstractArray, A::JopBlock, iblock::Integer, dblock::AbstractArray)
-    d[blockrange(A,iblock)] .= dblock[:]
-end
-
-function blockdomain(A::JopBlock, iblock::Integer)
-    i1 = iblock == 1 ? 1 : mapreduce(i->size(A[1,i],2), +, 1(iblock-1)) + 1
-    i2 = i1 + size(A[1,iblock],1) - 1
-    i1:i2
-end
-
-getblockdomain(m::AbstractArray, A::JopBlock, iblock::Integer) = reshape(m[blockdomain(A,iblock)], domain(A[1,iblock]))
-
-function setblockdomain!(m::AbstractArray, A::JopBlock, iblock::Integer, mblock::AbstractArray)
-    m[blockdomain(A,iblock)] .= mblock[:]
-end
-
-export Jet, JetSpace, Jop, JopLn, JopNl, JopZeroBlock, @blockop, domain,
-    getblockdomain, getblockrange, jacobian, jet, nblocks, point,
-    setblockdomain!, setblockrange!, shape, state, state!
+export Jet, JetSpace, Jop, JopLn, JopNl, JopZeroBlock, @blockop, domain, block,
+    block!, jacobian, jet, nblocks, point, setblockdomain!, setblockrange!,
+    shape, state, state!
 
 end
