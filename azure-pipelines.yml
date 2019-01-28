@@ -7,10 +7,10 @@ steps:
     sudo mkdir -p /opt/julia
     sudo tar --strip-components=1 -xzvf julia-1.1.0-linux-x86_64.tar.gz -C /opt/julia
     cd
-    mkdir -p ${HOME}/.julia/dev
+    mkdir -p /home/vsts/.julia/dev
     cp -r ${BUILD_SOURCESDIRECTORY} ${HOME}/.julia/dev/Jets
 
-    /opt/julia/bin/julia -e 'using Pkg; pkg"dev $(ENV[\"HOME\"])/.julia/dev/Jets)"; pkg"precompile"'
+    /opt/julia/bin/julia -e 'using Pkg; pkg"dev /home/vsts/.julia/dev/Jets"; pkg"precompile"'
   displayName: 'Install System'
 
 - script: |
