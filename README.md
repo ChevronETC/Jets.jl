@@ -1,3 +1,3 @@
-# JotNew
+# Jets
 
 Jotting down some Jets.
