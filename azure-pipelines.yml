@@ -3,7 +3,7 @@ pool:
 
 steps:
 - script: |
-    sudo wget https://julialang-s3.julialang.org/bin/linux/x64/1.0/julia-1.1.0-linux-x86_64.tar.gz
+    sudo wget https://julialang-s3.julialang.org/bin/linux/x64/1.1/julia-1.1.0-linux-x86_64.tar.gz
     sudo mkdir -p /opt/julia
     sudo tar --strip-components=1 -xzvf julia-1.1.0-linux-x86_64.tar.gz -C /opt/julia
     cd
