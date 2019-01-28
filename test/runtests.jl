@@ -215,7 +215,6 @@ end
 end
 
 @testset "block operator" begin
-
     B₁₁,B₁₃,B₁₄,B₂₁,B₂₃,B₂₄,B₃₂,B₃₃ = map(i->rand(10,10), 1:8)
     A₁₁,A₁₃,A₁₄,A₂₁,A₂₃,A₂₄,A₃₂,A₃₃ = map(B->JopBaz(B), (B₁₁,B₁₃,B₁₄,B₂₁,B₂₃,B₂₄,B₃₂,B₃₃))
     F₁₂,F₂₃,F₃₁ = map(i->JopBar(10), 1:3)
@@ -232,6 +231,10 @@ end
     F = @blockop [A₁₁ F₁₂ A₁₃ A₁₄;
                   A₂₁ Z₂₂ F₂₃ C₂₄;
                   F₃₁ A₃₂ A₃₃ Z₃₄]
+
+    @test ones(domain(F)) ≈ ones(40)
+    @test zeros(range(F)) ≈ zeros(30)
+    @test size(rand(range(F))) == (30,)
 
     m = rand(domain(F))
     d = F*m

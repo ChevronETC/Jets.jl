@@ -20,22 +20,27 @@ module Jets
 
 using LinearAlgebra
 
-struct JetSpace{T,N}
+abstract type JetAbstractSpace{T,N} end
+
+Base.eltype(R::JetAbstractSpace{T}) where {T} = T
+Base.eltype(R::Type{JetAbstractSpace{T,N}}) where {T,N} = T
+Base.eltype(R::Type{JetAbstractSpace{T}}) where {T} = T
+Base.ndims(R::JetAbstractSpace{T,N}) where {T,N} = N
+Base.length(R::JetAbstractSpace) = prod(size(R))
+Base.reshape(x::AbstractArray, R::JetAbstractSpace) = reshape(x, size(R))
+
+struct JetSpace{T,N} <: JetAbstractSpace{T,N}
     n::NTuple{N,Int}
 end
 JetSpace(_T::Type{T}, n::Vararg{Int,N}) where {T,N} = JetSpace{T,N}(n)
 JetSpace(_T::Type{T}, n::NTuple{N,Int}) where {T,N} = JetSpace{T,N}(n)
 
 Base.size(R::JetSpace) = R.n
-Base.length(R::JetSpace) = prod(R.n)
-Base.eltype(R::JetSpace{T}) where {T} = T
 Base.eltype(R::Type{JetSpace{T,N}}) where {T,N} = T
 Base.eltype(R::Type{JetSpace{T}}) where {T} = T
-Base.ndims(R::JetSpace{T,N}) where {T,N} = N
-Base.reshape(x::AbstractArray, R::JetSpace) = reshape(x, size(R))
 
 for f in (:ones, :rand, :zeros)
-    @eval (Base.$f)(R::JetSpace{T}) where {T} = ($f)(T,R.n)
+    @eval (Base.$f)(R::JetAbstractSpace{T,N}) where {T,N} = ($f)(T,size(R))::Array{T,N}
 end
 
 jet_missing(m) = error("not implemented")
@@ -168,7 +173,7 @@ end
 #
 # Block operator
 #
-struct JetBSpace{T,S<:JetSpace}
+struct JetBSpace{T,S<:JetSpace} <: JetAbstractSpace{T,1}
     spaces::Vector{S}
     indices::Vector{UnitRange{Int}}
     function JetBSpace(spaces)
@@ -186,12 +191,9 @@ struct JetBSpace{T,S<:JetSpace}
 end
 
 Base.size(R::JetBSpace) = (R.indices[end][end],)
-Base.length(R::JetBSpace) = size(R)[1]
-Base.eltype(R::JetBSpace{T}) where {T} = T
+Base.eltype(R::Type{JetBSpace{T,N}}) where {T,N} = T
 Base.eltype(R::Type{JetBSpace{T}}) where {T} = T
-Base.eltype(R::Type{JetBSpace{T,S}}) where {T,S} = T
-Base.ndims(R::JetBSpace) = 1
-Base.reshape(x::AbstractArray, R::JetBSpace) = reshape(x, length(R))
+
 indices(R::JetBSpace, iblock::Integer) = R.indices[iblock]
 
 block(x::AbstractArray, R::JetBSpace, iblock::Integer) = reshape(x[indices(R, iblock)], R.spaces[iblock])
