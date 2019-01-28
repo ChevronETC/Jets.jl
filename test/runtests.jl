@@ -126,8 +126,7 @@ end
 end
 
 @testset "composition, linear" begin
-    d₁,d₂,d₃,d₄ = map(i->rand(10), 1:4)
-    A₁,A₂,A₃,A₄ = map(d->JopBaz(rand(10,10)), (d₁,d₂,d₃,d₄))
+    A₁,A₂,A₃,A₄ = map(d->JopBaz(rand(10,10)), 1:4)
     B₁,B₂,B₃,B₄ = map(A->state(A).A, (A₁,A₂,A₃,A₄))
     A₂₁ = A₂ ∘ A₁
     A₃₂₁ = A₃ ∘ A₂ ∘ A₁

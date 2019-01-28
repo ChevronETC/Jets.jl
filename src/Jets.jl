@@ -1,7 +1,7 @@
 #=
 NOTES...
 * we use an extra field (a named tuple) in JotOp to keep operator state
-* I could not figure out how to make the block operator without including spaces in JotOp
+* I could not figure out how to make the block operator without including spaces in Jop
 * Can we use LinearMaps.jl, AbstractOperators.jl, etc.?
 
 TODO...
