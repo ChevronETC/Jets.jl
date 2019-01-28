@@ -10,9 +10,6 @@ TODO...
    - block operator has unstable constructor
  * LinearAlgebra has an Adjoint type, can we use it?
  * propagating @inbounds
- * distributed block operator (memory)
- * distributed block operator (file system)
- * fault tolerance
  * kron, +, -
 =#
 
