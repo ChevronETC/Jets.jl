@@ -10,7 +10,7 @@ steps:
     mkdir -p ${HOME}/.julia/dev
     cp -r ${BUILD_SOURCESDIRECTORY} ${HOME}/.julia/dev/Jets
 
-    /opt/julia/bin/julia -e 'using Pkg; pkg"dev $(ENV["HOME"])/.julia/dev/Jets)"; pkg"precompile"'
+    /opt/julia/bin/julia -e 'using Pkg; pkg"dev $(ENV[\"HOME\"])/.julia/dev/Jets)"; pkg"precompile"'
   displayName: 'Install System'
 
 - script: |
