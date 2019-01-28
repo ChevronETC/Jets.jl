@@ -209,6 +209,7 @@ function JopBlock(ops::Matrix{T}) where {T<:Jop}
     rng = JetBSpace([range(ops[i,1]) for i=1:size(ops,1)])
     JopBlock(dom, rng, ops)
 end
+JopBlock(ops::Vector{T}) where {T<:Jop} = JopBlock(reshape(ops, length(ops), 1))
 
 struct JopZeroBlock{T,N} <: Jop
     dom::JetSpace{T,N}
