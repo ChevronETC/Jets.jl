@@ -45,7 +45,7 @@ Base.eltype(R::Type{JetSpace{T}}) where {T} = T
 
 jet_missing(m) = error("not implemented")
 
-mutable struct Jet{D<:JetSpace,R<:JetSpace,F<:Function,DF<:Function,DF′<:Function,M<:AbstractArray,S<:NamedTuple}
+mutable struct Jet{D<:JetAbstractSpace,R<:JetAbstractSpace,F<:Function,DF<:Function,DF′<:Function,M<:AbstractArray,S<:NamedTuple}
     dom::D
     rng::R
     f!::F
@@ -130,7 +130,7 @@ Base.:*(A::Jop, m::AbstractArray) = mul!(zeros(range(A)), A, m)
 #
 # composition
 #
-struct JopComposite{T<:Tuple, D<:JetSpace, R<:JetSpace} <: Jop
+struct JopComposite{T<:Tuple, D<:JetAbstractSpace, R<:JetAbstractSpace} <: Jop
     ops::T
     function JopComposite(ops::T) where {T<:Tuple}
         D = typeof(domain(ops[end]))
@@ -138,9 +138,9 @@ struct JopComposite{T<:Tuple, D<:JetSpace, R<:JetSpace} <: Jop
         new{T,D,R}(ops)
     end
 end
-_operators(F::Jop) = (F,)
-_operators(F::JopComposite) = F.ops
-Base.:∘(A₂::Jop, A₁::Jop) = JopComposite((_operators(A₂)..., _operators(A₁)...))
+operators(F::Jop) = (F,)
+operators(F::JopComposite) = F.ops
+Base.:∘(A₂::Jop, A₁::Jop) = JopComposite((operators(A₂)..., operators(A₁)...))
 
 domain(A::JopComposite) = domain(A.ops[end])
 Base.range(A::JopComposite) = range(A.ops[1])
@@ -173,7 +173,7 @@ end
 #
 # Block operator
 #
-struct JetBSpace{T,S<:JetSpace} <: JetAbstractSpace{T,1}
+struct JetBSpace{T,S<:JetAbstractSpace} <: JetAbstractSpace{T,1}
     spaces::Vector{S}
     indices::Vector{UnitRange{Int}}
     function JetBSpace(spaces)
@@ -198,10 +198,6 @@ indices(R::JetBSpace, iblock::Integer) = R.indices[iblock]
 
 block(x::AbstractArray, R::JetBSpace, iblock::Integer) = reshape(x[indices(R, iblock)], R.spaces[iblock])
 block!(x::AbstractArray, R::JetBSpace, iblock::Integer, xblock::AbstractArray) = x[indices(R, iblock)] .= xblock
-
-for f in (:ones, :rand, :zeros)
-    @eval (Base.$f)(R::JetBSpace{T}) where {T} = ($f)(T,length(R))
-end
 
 struct JopBlock{D<:JetBSpace,R<:JetBSpace,T<:Jop} <: Jop
     dom::D
