@@ -86,6 +86,7 @@ SUITE["Composition"]["range"] = @benchmarkable range($G)
 
 _F = [JopBar(100) JopBar(100) JopBar(100) ; JopBar(100) JopBar(100) JopBar(100)]
 F = @blockop _F
+domainF = domain(F)
 m = rand(domain(F))
 d = rand(range(F))
 J = jacobian(F, m)
@@ -101,14 +102,13 @@ SUITE["Block, homogeneous"]["shape"] = @benchmarkable shape($F)
 SUITE["Block, homogeneous"]["size"] = @benchmarkable size($F)
 SUITE["Block, homogeneous"]["domain"] = @benchmarkable domain($F)
 SUITE["Block, homogeneous"]["range"] = @benchmarkable range($F)
-SUITE["Block, homogeneous"]["getblockdomain"] = @benchmarkable getblockdomain($m, $F, 2)
-SUITE["Block, homogeneous"]["getblockrange"] = @benchmarkable getblockrange($d, $F, 2)
-SUITE["Block, homogeneous"]["setblockdomain!"] = @benchmarkable setblockdomain!($m, $F, 2, $(rand(100)))
-SUITE["Block, homogeneous"]["setblockrange!"] = @benchmarkable setblockrange!($d, $F, 2, $(rand(100)))
+SUITE["Block, homogeneous"]["block"] = @benchmarkable block($m, $domainF, 2)
+SUITE["Block, homogeneous"]["block!"] = @benchmarkable block!($m, $domainF, 2, $(rand(100)))
 
 x = rand(100)
 _F = [JopBar(100) JopFoo(x) JopBar(100) ; JopBar(100) JopFoo(x) JopBar(100)]
 F = @blockop _F
+domainF = domain(F)
 m = rand(domain(F))
 d = rand(range(F))
 J = jacobian(F, m)
@@ -124,9 +124,7 @@ SUITE["Block, heterogeneous"]["shape"] = @benchmarkable shape($F)
 SUITE["Block, heterogeneous"]["size"] = @benchmarkable size($F)
 SUITE["Block, heterogeneous"]["domain"] = @benchmarkable domain($F)
 SUITE["Block, heterogeneous"]["range"] = @benchmarkable range($F)
-SUITE["Block, homogeneous"]["getblockdomain"] = @benchmarkable getblockdomain($m, $F, 2)
-SUITE["Block, homogeneous"]["getblockrange"] = @benchmarkable getblockrange($d, $F, 2)
-SUITE["Block, homogeneous"]["setblockdomain!"] = @benchmarkable setblockdomain!($m, $F, 2, $(rand(100)))
-SUITE["Block, homogeneous"]["setblockdomain"] = @benchmarkable setblockrange!($d, $F, 2, $(rand(100)))
+SUITE["Block, homogeneous"]["block"] = @benchmarkable block($m, $domainF, 2)
+SUITE["Block, homogeneous"]["block!"] = @benchmarkable block!($d, $domainF, 2, $(rand(100)))
 
 SUITE

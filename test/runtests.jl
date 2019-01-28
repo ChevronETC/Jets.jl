@@ -215,6 +215,7 @@ end
 end
 
 @testset "block operator" begin
+
     B₁₁,B₁₃,B₁₄,B₂₁,B₂₃,B₂₄,B₃₂,B₃₃ = map(i->rand(10,10), 1:8)
     A₁₁,A₁₃,A₁₄,A₂₁,A₂₃,A₂₄,A₃₂,A₃₃ = map(B->JopBaz(B), (B₁₁,B₁₃,B₁₄,B₂₁,B₂₃,B₂₄,B₃₂,B₃₃))
     F₁₂,F₂₃,F₃₁ = map(i->JopBar(10), 1:3)
@@ -254,19 +255,19 @@ end
     @test δd ≈ L*δm
     @test L'*δd ≈ J'*δd
 
-    @test getblockrange(δd, L, 2) ≈ δd[11:20]
-    setblockrange!(δd, L, 2, π*ones(10))
-    @test getblockrange(δd, L, 2) ≈ π*ones(10)
+    @test block(δd, range(L), 2) ≈ δd[11:20]
+    block!(δd, range(L), 2, π*ones(10))
+    @test block(δd, range(L), 2) ≈ π*ones(10)
 
-    @test getblockrange(d, F, 2) ≈ d[11:20]
-    setblockrange!(d, F, 2, π*ones(10))
-    @test getblockrange(d, F, 2) ≈ π*ones(10)
+    @test block(d, range(F), 2) ≈ d[11:20]
+    block!(d, range(F), 2, π*ones(10))
+    @test block(d, range(F), 2) ≈ π*ones(10)
 
-    @test getblockdomain(δm, L, 2) ≈ δm[11:20]
-    setblockdomain!(δm, L, 2, π*ones(10))
-    @test getblockdomain(δm, L, 2) ≈ π*ones(10)
+    @test block(δm, domain(L), 2) ≈ δm[11:20]
+    block!(δm, domain(L), 2, π*ones(10))
+    @test block(δm, domain(L), 2) ≈ π*ones(10)
 
-    @test getblockdomain(m, F, 2) ≈ m[11:20]
-    setblockdomain!(m, F, 2, π*ones(10))
-    @test getblockdomain(m, F, 2) ≈ π*ones(10)
+    @test block(m, domain(F), 2) ≈ m[11:20]
+    block!(m, domain(F), 2, π*ones(10))
+    @test block(m, domain(F), 2) ≈ π*ones(10)
 end
