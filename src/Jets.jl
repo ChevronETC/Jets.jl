@@ -29,6 +29,10 @@ Base.ndims(R::JetAbstractSpace{T,N}) where {T,N} = N
 Base.length(R::JetAbstractSpace) = prod(size(R))
 Base.reshape(x::AbstractArray, R::JetAbstractSpace) = reshape(x, size(R))
 
+for f in (:ones, :rand, :zeros)
+    @eval (Base.$f)(R::JetAbstractSpace{T,N}) where {T,N} = ($f)(T,size(R))::Array{T,N}
+end
+
 struct JetSpace{T,N} <: JetAbstractSpace{T,N}
     n::NTuple{N,Int}
 end
@@ -38,10 +42,6 @@ JetSpace(_T::Type{T}, n::NTuple{N,Int}) where {T,N} = JetSpace{T,N}(n)
 Base.size(R::JetSpace) = R.n
 Base.eltype(R::Type{JetSpace{T,N}}) where {T,N} = T
 Base.eltype(R::Type{JetSpace{T}}) where {T} = T
-
-for f in (:ones, :rand, :zeros)
-    @eval (Base.$f)(R::JetAbstractSpace{T,N}) where {T,N} = ($f)(T,size(R))::Array{T,N}
-end
 
 jet_missing(m) = error("not implemented")
 
