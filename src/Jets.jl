@@ -214,6 +214,9 @@ struct JopZeroBlock{T,N} <: Jop
 end
 jacobian(A::JopZeroBlock, m) = A
 
+domain(A::JopZeroBlock) = A.dom
+Base.range(A::JopZeroBlock) = A.rng
+
 macro blockop(ex)
     :(JopBlock($(esc(ex))))
 end
@@ -271,14 +274,8 @@ end
 Base.adjoint(A::JopBlock{D,R,T}) where {D,R,T} = JopAdjoint(A)
 
 function jacobian(F::JopBlock, m::AbstractArray)
-    domrng = Vector{UnitRange}(undef, nblocks(F, 2))
-    domN = 0
-    for i = 1:nblocks(F, 2)
-        dom1 = domN + 1
-        domN = dom1 + size(F[1,i], 2) - 1
-        domrng[i] = dom1:domN
-    end
-    JopBlock([jacobian(F[i,j], @view(m[domrng[j]])) for i=1:nblocks(F,1), j=1:nblocks(F,2)])
+    dom = domain(F)
+    JopBlock([jacobian(F[i,j], reshape(@view(m[indices(dom, j)]), domain(F[i,j]))) for i=1:nblocks(F,1), j=1:nblocks(F,2)])
 end
 
 export Jet, JetSpace, Jop, JopLn, JopNl, JopZeroBlock, @blockop, domain, block,
