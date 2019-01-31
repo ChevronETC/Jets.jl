@@ -278,8 +278,28 @@ function jacobian(F::JopBlock, m::AbstractArray)
     JopBlock([jacobian(F[i,j], reshape(@view(m[indices(dom, j)]), domain(F[i,j]))) for i=1:nblocks(F,1), j=1:nblocks(F,2)])
 end
 
+#
+# utilities
+#
+function dot_product_test(op::JopLn, m::AbstractArray, d::AbstractArray; mmask=[], dmask=[])
+    mmask = length(mmask) == 0 ? ones(domain(op)) : mmask
+    dmask = length(dmask) == 0 ? ones(range(op)) : dmask
+
+    ds = op * (mmask .* m)
+    ms = op' * (dmask .* d)
+
+    lhs = dot(mmask.*m, ms)
+    rhs = dot(ds, dmask.*d)
+
+    if eltype(lhs) <: Complex && eltype(rhs) <: Complex
+        return lhs, rhs
+    else
+        return real(lhs), real(rhs)
+    end
+end
+
 export Jet, JetSpace, Jop, JopLn, JopNl, JopZeroBlock, @blockop, domain, block,
-    block!, jacobian, jet, nblocks, point, setblockdomain!, setblockrange!,
-    shape, state, state!
+    block!, dot_product_test, jacobian, jet, nblocks, point, setblockdomain!,
+    setblockrange!, shape, state, state!
 
 end
