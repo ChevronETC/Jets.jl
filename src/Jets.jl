@@ -228,19 +228,19 @@ nblocks(A::JopBlock) = size(A.ops)
 nblocks(A::JopBlock, i) = size(A.ops, i)
 
 function LinearAlgebra.mul!(d::AbstractArray, A::JopBlock, m::AbstractArray)
-    rngN = 0
-    for iblkrow = 1:nblocks(A,1)
-        rng1 = rngN + 1
-        rngN = rng1 + size(A[iblkrow,1],1) - 1
-        _d = @view d[rng1:rngN]
-
-        domN = 0
-        for iblkcol = 1:nblocks(A,2)
-            dom1 = domN + 1
-            domN = dom1 + size(A[1,iblkcol],2) - 1
+    dom,rng = domain(A),range(A)
+    dtmp = nblocks(A, 1) == 1 ? d : zeros(range(A[1,1]))
+    for iblkrow = 1:nblocks(A, 1)
+        _d = reshape(@view(d[indices(rng, iblkrow)]), range(A[iblkrow,1]))
+        dtmp = length(dtmp) == length(range(A[iblkrow,1])) ? reshape(dtmp, range(A[iblkrow,1])) : zeros(range(A[iblkrow,1]))
+        for iblkcol = 1:nblocks(A, 2)
             if !isa(A[iblkrow,iblkcol], JopZeroBlock)
-                _m = @view m[dom1:domN]
-                _d .+= A[iblkrow,iblkcol] * reshape(_m, domain(A[iblkrow,iblkcol]))
+                if nblocks(A, 2) == 1
+                    mul!(_d, A[iblkrow,iblkcol], m)
+                else
+                    _m = reshape(@view(m[indices(dom, iblkcol)]), domain(A[iblkrow,iblkcol]))
+                    _d .+= mul!(dtmp, A[iblkrow,iblkcol], _m)
+                end
             end
         end
     end
@@ -249,19 +249,19 @@ end
 
 function LinearAlgebra.mul!(m::AbstractArray, B::JopAdjoint{T}, d::AbstractArray) where {T<:JopBlock}
     A = B.op
-    domN = 0
-    for iblkcol = 1:nblocks(A,2)
-        dom1 = domN + 1
-        domN = dom1 + size(A[1,iblkcol],2) - 1
-        _m = @view m[dom1:domN]
-
-        rngN = 0
-        for iblkrow = 1:nblocks(A,1)
-            rng1 = rngN + 1
-            rngN = rng1 + size(A[iblkrow,1],1) - 1
+    dom,rng = domain(A),range(A)
+    mtmp = nblocks(A, 1) == 1 ? m : zeros(domain(A[1,1]))
+    for iblkcol = 1:nblocks(A, 2)
+        _m = reshape(@view(m[indices(dom, iblkcol)]), domain(A[1,iblkcol]))
+        mtmp = length(mtmp) == length(domain(A[1,iblkcol])) ? reshape(mtmp, domain(A[1,iblkcol])) : zeros(domain(A[1,iblkcol]))
+        for iblkrow = 1:nblocks(A, 1)
             if !isa(A[iblkrow,iblkcol], JopZeroBlock)
-                _d = @view d[rng1:rngN]
-                _m .+= adjoint(A[iblkrow,iblkcol]) * reshape(_d, range(A[iblkrow,iblkcol]))
+                if nblocks(A, 1) == 1
+                    mul!(_m, A[iblkrow,iblkcol], d)
+                else
+                    _d = reshape(@view(d[indices(rng, iblkrow)]), range(A[iblkrow,iblkcol]))
+                    _m .+= mul!(mtmp, adjoint(A[iblkrow,iblkcol]), _d)
+                end
             end
         end
     end
