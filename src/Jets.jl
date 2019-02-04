@@ -29,6 +29,7 @@ Base.reshape(x::AbstractArray, R::JetAbstractSpace) = reshape(x, size(R))
 for f in (:ones, :rand, :zeros)
     @eval (Base.$f)(R::JetAbstractSpace{T,N}) where {T,N} = ($f)(T,size(R))::Array{T,N}
 end
+Base.Array(R::JetAbstractSpace{T,N}) where {T,N} = Array{T,N}(undef, size(R))
 
 struct JetSpace{T,N} <: JetAbstractSpace{T,N}
     n::NTuple{N,Int}
@@ -192,9 +193,11 @@ Base.eltype(R::Type{JetBSpace{T,N}}) where {T,N} = T
 Base.eltype(R::Type{JetBSpace{T}}) where {T} = T
 
 indices(R::JetBSpace, iblock::Integer) = R.indices[iblock]
+space(R::JetBSpace, iblock::Integer) = R.spaces[iblock]
 
-block(x::AbstractArray, R::JetBSpace, iblock::Integer) = reshape(x[indices(R, iblock)], R.spaces[iblock])
-block!(x::AbstractArray, R::JetBSpace, iblock::Integer, xblock::AbstractArray) = x[indices(R, iblock)] .= xblock
+getblock!(x::AbstractArray, R::JetBSpace, iblock::Integer, xblock::AbstractArray) = xblock .= x[indices(R, iblock)]
+getblock(x::AbstractArray, R::JetBSpace, iblock::Integer) = getblock!(x, R, iblock, Array(R.spaces[iblock]))
+setblock!(x::AbstractArray, R::JetBSpace, iblock::Integer, xblock::AbstractArray) = x[indices(R, iblock)] .= xblock
 
 struct JopBlock{D<:JetBSpace,R<:JetBSpace,T<:Jop} <: Jop
     dom::D
@@ -298,8 +301,8 @@ function dot_product_test(op::JopLn, m::AbstractArray, d::AbstractArray; mmask=[
     end
 end
 
-export Jet, JetSpace, Jop, JopLn, JopNl, JopZeroBlock, @blockop, domain, block,
-    block!, dot_product_test, jacobian, jet, nblocks, point, setblockdomain!,
-    setblockrange!, shape, state, state!
+export Jet, JetSpace, Jop, JopLn, JopNl, JopZeroBlock, @blockop, domain,
+    getblock, getblock!, dot_product_test, getblock, getblock!, indices,
+    jacobian, jet, nblocks, point, setblock!, shape, space, state, state!
 
 end

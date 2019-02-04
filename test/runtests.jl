@@ -1,24 +1,24 @@
 using Jets, LinearAlgebra, Test
 
+JopFoo_df!(d,m;diagonal,kwargs...) = d .= diagonal .* m
 function JopFoo(diag)
-    df!(d,m;diagonal,kwargs...) = d .= diagonal .* m
     spc = JetSpace(Float64, length(diag))
-    JopLn(;df! = df!, df′! = df!, dom = spc, rng = spc, s = (diagonal=diag,))
+    JopLn(;df! = JopFoo_df!, df′! = JopFoo_df!, dom = spc, rng = spc, s = (diagonal=diag,))
 end
 
+JopBar_f!(d,m) = d .= m.^2
+JopBar_df!(δd,δm;mₒ,kwargs...) = δd .= 2 .* mₒ .* δm
 function JopBar(n)
-    f!(d,m) = d .= m.^2
-    df!(δd,δm;mₒ,kwargs...) = δd .= 2 .* mₒ .* δm
     spc = JetSpace(Float64, n)
-    JopNl(f! = f!, df! = df!, df′! = df!, dom = spc, rng = spc)
+    JopNl(f! = JopBar_f!, df! = JopBar_df!, df′! = JopBar_df!, dom = spc, rng = spc)
 end
 
+JopBaz_df!(d,m;A,kwargs...) =  d .= A * m
+JopBaz_df′!(m,d;A,kwargs...) = m .= A' * d
 function JopBaz(A)
-    df!(d,m;A,kwargs...) = d .= A * m
-    df′!(m,d;A,kwargs...) = m .= A' * d
     dom = JetSpace(eltype(A), size(A,2))
     rng = JetSpace(eltype(A), size(A,1))
-    JopLn(;df! = df!, df′! = df′!, dom = dom, rng = rng, s = (A=A,))
+    JopLn(;df! = JopBaz_df!, df′! = JopBaz_df′!, dom = dom, rng = rng, s = (A=A,))
 end
 
 @testset "JetSpace, construction, n=$n, T=$T" for n in ((2,),(2,3),(2,3,4)), T in (Float32,Float64,Complex{Float32},Complex{Float64})
@@ -43,6 +43,7 @@ end
     @test ones(R) ≈ ones(T, n)
     @test size(rand(R)) == size(R)
     @test zeros(R) ≈ zeros(T, n)
+    @test size(Array(R)) == size(R)
 end
 
 @testset "Jet, construction" begin
@@ -257,19 +258,21 @@ end
     @test δd ≈ L*δm
     @test L'*δd ≈ J'*δd
 
-    @test block(δd, range(L), 2) ≈ δd[11:20]
-    block!(δd, range(L), 2, π*ones(10))
-    @test block(δd, range(L), 2) ≈ π*ones(10)
+    @test getblock(δd, range(L), 2) ≈ δd[11:20]
+    setblock!(δd, range(L), 2, π*ones(10))
+    @test getblock(δd, range(L), 2) ≈ π*ones(10)
 
-    @test block(d, range(F), 2) ≈ d[11:20]
-    block!(d, range(F), 2, π*ones(10))
-    @test block(d, range(F), 2) ≈ π*ones(10)
+    @test getblock(d, range(F), 2) ≈ d[11:20]
+    setblock!(d, range(F), 2, π*ones(10))
+    @test getblock(d, range(F), 2) ≈ π*ones(10)
 
-    @test block(δm, domain(L), 2) ≈ δm[11:20]
-    block!(δm, domain(L), 2, π*ones(10))
-    @test block(δm, domain(L), 2) ≈ π*ones(10)
+    @test getblock(δm, domain(L), 2) ≈ δm[11:20]
+    setblock!(δm, domain(L), 2, π*ones(10))
+    @test getblock(δm, domain(L), 2) ≈ π*ones(10)
 
-    @test block(m, domain(F), 2) ≈ m[11:20]
-    block!(m, domain(F), 2, π*ones(10))
-    @test block(m, domain(F), 2) ≈ π*ones(10)
+    @test getblock(m, domain(F), 2) ≈ m[11:20]
+    setblock!(m, domain(F), 2, π*ones(10))
+    @test getblock(m, domain(F), 2) ≈ π*ones(10)
+
+    @test getblock!(m, domain(F), 2, Array(space(domain(F),2))) ≈ π*ones(10)
 end
