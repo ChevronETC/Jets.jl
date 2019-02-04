@@ -81,6 +81,7 @@ end
 
 domain(jet::Jet) = jet.dom
 Base.range(jet::Jet) = jet.rng
+Base.eltype(jet::Jet) = promote_type(eltype(domain(jet)), eltype(range(jet)))
 state(jet::Jet) = jet.s
 state!(jet, s) = jet.s = merge(jet.s, s)
 point(jet::Jet) = jet.mₒ
@@ -88,6 +89,7 @@ point!(jet::Jet, mₒ::AbstractArray) = jet.mₒ = mₒ
 
 jet(A::Jop) = A.jet
 jet(A::JopAdjoint) = jet(A.op)
+Base.eltype(A::Jop) = eltype(jet(A))
 point(A::JopLn) = point(jet(A))
 point(A::JopAdjoint) = point(jet(A.op))
 state(A::Jop) = state(jet(A))
@@ -142,6 +144,7 @@ Base.:∘(A₂::Jop, A₁::Jop) = JopComposite((operators(A₂)..., operators(A�
 
 domain(A::JopComposite) = domain(A.ops[end])
 Base.range(A::JopComposite) = range(A.ops[1])
+Base.eltype(A::JopComposite) = promote_type(eltype(domain(A)), eltype(range(A)))
 
 function LinearAlgebra.mul!(d::T, A::JopComposite, m::AbstractArray) where {T<:AbstractArray}
     f = mapreduce(i->(_m->A.ops[i]*_m), ∘, 1:length(A.ops))
@@ -230,6 +233,8 @@ Base.getindex(A::JopAdjoint{T}, i, j) where {T<:JopBlock} = A.op.ops[j,i]
 domain(A::JopBlock) = A.dom
 Base.range(A::JopBlock) = A.rng
 
+Base.eltype(A::JopBlock) = promote_type(eltype(domain(A)), eltype(range(A)))
+
 nblocks(A::JopBlock) = size(A.ops)
 nblocks(A::JopBlock, i) = size(A.ops, i)
 
@@ -284,6 +289,19 @@ end
 #
 # utilities
 #
+function Base.convert(::Type{T}, A::Jop) where {T<:Array}
+    m = zeros(domain(A))
+    d = zeros(range(A))
+    B = zeros(eltype(A), size(A))
+    for icol = 1:size(A, 2)
+        m .= 0
+        d .= 0
+        m[icol] = 1
+        B[:,icol] .= mul!(d, A, m)
+    end
+    B
+end
+
 function dot_product_test(op::JopLn, m::AbstractArray, d::AbstractArray; mmask=[], dmask=[])
     mmask = length(mmask) == 0 ? ones(domain(op)) : mmask
     dmask = length(dmask) == 0 ? ones(range(op)) : dmask

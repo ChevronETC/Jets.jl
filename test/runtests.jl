@@ -98,6 +98,8 @@ end
     @test shape(A,2) == (10,)
     @test domain(A) == JetSpace(Float64,10)
     @test range(A) == JetSpace(Float64,10)
+    @test eltype(A) == Float64
+    @test convert(Array, A) ≈ diagm(0=>diag)
 end
 
 @testset "nonlinear operator" begin
@@ -148,6 +150,10 @@ end
     @test a ≈ (B₁' * ( B₂' * ( B₃' * ( B₄' * d))))
 
     @test domain(A₄₃₂₁) == JetSpace(Float64, 10)
+    @test eltype(A₄₃₂₁) == Float64
+
+    B₄₃₂₁ = convert(Array, A₄₃₂₁)
+    @test B₄₃₂₁*m ≈ A₄₃₂₁*m
 end
 
 @testset "composition, nonlinear" begin
@@ -275,4 +281,12 @@ end
     @test getblock(m, domain(F), 2) ≈ π*ones(10)
 
     @test getblock!(m, domain(F), 2, Array(space(domain(F),2))) ≈ π*ones(10)
+
+    @test eltype(L) == Float64
+    K = convert(Array, L)
+
+    L*δm
+    K*δm
+
+    @test L*δm ≈ K*δm
 end
