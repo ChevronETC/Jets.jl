@@ -30,10 +30,10 @@ SUITE["✈"]["state!"] = @benchmarkable state!($✈, (a=$(rand(20)),))
 SUITE["✈"]["shape"] = @benchmarkable shape($✈)
 SUITE["✈"]["size"] = @benchmarkable size($✈)
 
+JopFoo_df!(d,m;diagonal,kwargs...) = d .= diagonal .* m
 function JopFoo(diag)
-    df!(d,m;diagonal,kwargs...) = d .= diagonal .* m
     spc = JetSpace(Float64, length(diag))
-    JopLn(;df! = df!, df′! = df!, dom = spc, rng = spc, s = (diagonal=diag,))
+    JopLn(;df! = JopFoo_df!, dom = spc, rng = spc, s = (diagonal=diag,))
 end
 A = JopFoo(rand(100))
 m = rand(100)
@@ -50,11 +50,11 @@ SUITE["JopLn"]["shape"] = @benchmarkable shape($A)
 SUITE["JopLn"]["domain"] = @benchmarkable domain($A)
 SUITE["JopLn"]["range"] = @benchmarkable range($A)
 
+JopBar_f!(d,m;kwargs...) = d .= m.^2
+JopBar_df!(δd,δm;mₒ,kwargs...) = δd .= 2 .* mₒ .* δm
 function JopBar(n)
-    f!(d,m) = d .= m.^2
-    df!(δd,δm;mₒ,kwargs...) = δd .= 2 .* mₒ .* δm
     spc = JetSpace(Float64, n)
-    JopNl(f! = f!, df! = df!, df′! = df!, dom = spc, rng = spc)
+    JopNl(f! = JopBar_f!, df! = JopBar_df!, dom = spc, rng = spc)
 end
 F = JopBar(100)
 m = rand(100)
@@ -102,8 +102,8 @@ SUITE["Block, homogeneous"]["shape"] = @benchmarkable shape($F)
 SUITE["Block, homogeneous"]["size"] = @benchmarkable size($F)
 SUITE["Block, homogeneous"]["domain"] = @benchmarkable domain($F)
 SUITE["Block, homogeneous"]["range"] = @benchmarkable range($F)
-SUITE["Block, homogeneous"]["block"] = @benchmarkable block($m, $domainF, 2)
-SUITE["Block, homogeneous"]["block!"] = @benchmarkable block!($m, $domainF, 2, $(rand(100)))
+SUITE["Block, homogeneous"]["block"] = @benchmarkable getblock($m, $domainF, 2)
+SUITE["Block, homogeneous"]["block!"] = @benchmarkable setblock!($m, $domainF, 2, $(rand(100)))
 
 x = rand(100)
 _F = [JopBar(100) JopFoo(x) JopBar(100) ; JopBar(100) JopFoo(x) JopBar(100)]
@@ -124,7 +124,7 @@ SUITE["Block, heterogeneous"]["shape"] = @benchmarkable shape($F)
 SUITE["Block, heterogeneous"]["size"] = @benchmarkable size($F)
 SUITE["Block, heterogeneous"]["domain"] = @benchmarkable domain($F)
 SUITE["Block, heterogeneous"]["range"] = @benchmarkable range($F)
-SUITE["Block, homogeneous"]["block"] = @benchmarkable block($m, $domainF, 2)
-SUITE["Block, homogeneous"]["block!"] = @benchmarkable block!($d, $domainF, 2, $(rand(100)))
+SUITE["Block, homogeneous"]["block"] = @benchmarkable getblock($m, $domainF, 2)
+SUITE["Block, homogeneous"]["block!"] = @benchmarkable setblock!($d, $domainF, 2, $(rand(100)))
 
 SUITE
