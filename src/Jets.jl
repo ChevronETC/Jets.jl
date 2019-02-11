@@ -142,6 +142,101 @@ LinearAlgebra.mul!(m::AbstractArray, A::JopAdjoint{J,T}, d::AbstractArray) where
 Base.:*(A::Jop, m::AbstractArray) = mul!(zeros(range(A)), A, m)
 
 #
+# Symmetric spaces / arrays
+#
+struct JetSSpace{T,N} <: JetAbstractSpace{T,N}
+    nonsymindices::Vector{CaresianIndex{N}}
+    n::NTuple{N,Int}
+end
+
+for f in (:ones, :rand, :zeros)
+    @eval (Base.$f)(R::JetSSpace{T,N}) where {T,N} = SymmetricArray(R.nonsymindices, ($f)(T,size(R)))::SymmetricArray{T,N}
+end
+Base.Array(R::JetSSpace{T,N}) where {T,N} = SymmetricArray{T,N}(R.nonsymindices, Array{T,N}(undef, size(R)))
+
+struct SymmetricArray{T,N} <: AbstractArray{T,N}
+    nonsymindices::Vector{CartesianInex{N}}
+    A::Array{T,N}
+end
+
+Base.size(A::SymmetricArray) = size(A.A)
+Base.getindex(A::SymmetricArray, i::Integer) = A.A[i]
+Base.setindex!(A::SymmetricArray, v, i::Integer) = A.A[i] = v
+Base.IndexStyle(::Type{SymmetricArray}) = IndexLinear()
+
+function norm(itr::SymmetricArray, p::Real=2)
+    isempty(itr) && return float(norm(zero(eltype(itr))))
+    if p == 2
+        return norm2(itr)
+    elseif p == 1
+        return norm1(itr)
+    elseif p == Inf
+        return normInf(itr)
+    elseif p == 0
+        return norm0(itr)
+    elseif p == -Inf
+        return normMinusInf(itr)
+    else
+        normp(itr, p)
+    end
+end
+
+function Base.norm2(itr::SymmetricArray{T}) where {T}
+    n = zero(T)
+    for i in eachindex(itr)
+        if i ∈ itr.nonsymindices
+            n += itr[i]^2
+        else
+            n += 2*iter[i]^2
+        end
+    end
+    sqrt(n)
+end
+
+function Base.norm1(itr::SymmetricArray{T}) where {T}
+    n = zero(T)
+    for i in eachindex(itr)
+        if i ∈ itr.nonsymindices
+            n += abs(itr[i])
+        else
+            n += 2*abs(itr[i])
+        end
+    end
+    n
+end
+
+Base.normInf(itr::SymmetricArray) = normInf(itr)
+
+function Base.norm0(itr::SymmetricArray{T}) where {T}
+    n = zero(T)
+    for i in eachindex(itr)
+        if i ∈ itr.nonsymindices
+            if iszero(itr[i])
+                n += one(T)
+            end
+        else
+            if iszero(itr[i])
+                n += 2*one(T)
+            end
+        end
+    end
+    n
+end
+
+function Base.normp(itr::SymmetricArray{T}, p) where {T}
+    _p = T(p)
+    n = zero(T)
+    for i in eachindex(itr)
+        if i ∈ itr.nonsymindices
+            n += itr[i]^_p
+        else
+            n += 2* iter[i]^_p
+        end
+    end
+    n^(1/_p)
+end
+
+#
 # composition
 #
 JetComposite(jets) = Jet(f! = JetComposite_f!, df! = JetComposite_df!, df′! = JetComposite_df′!, dom = domain(jets[end]), rng = range(jets[1]), s = (jets=jets,))
