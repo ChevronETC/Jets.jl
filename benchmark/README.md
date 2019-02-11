@@ -11,7 +11,8 @@ In order to compare the benchmarks against a different version:
 results=judge("Jets", "e1d4076")
 export_markdown("results.md", results)
 ```
-where `e1d4076` is a Git SHA.  To run a specific benchmark:
+where `e1d4076` is a Git SHA or the name of a Git branch.  To run a specific
+benchmark:
 ```julia
 benchmarks=include("benchmarks.jl")
 run(benchmarks["Jet"]["construct"])
@@ -20,6 +21,7 @@ run(benchmarks["Jet"]["construct"])
 You can profile a benchmark.  For example:
 ```julia
 benchmarks=include("benchmarks.jl")
+using Profile
 @profile run(benchmarks["Jet"]["construct"])
 ```
 Use `Profile.print()` and `using ProfileView; ProfileView.view()` to inspect the

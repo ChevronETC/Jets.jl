@@ -3,10 +3,10 @@ using Jets, LinearAlgebra, Test
 JopFoo_df!(d,m;diagonal,kwargs...) = d .= diagonal .* m
 function JopFoo(diag)
     spc = JetSpace(Float64, length(diag))
-    JopLn(;df! = JopFoo_df!, df′! = JopFoo_df!, dom = spc, rng = spc, s = (diagonal=diag,))
+    JopLn(;df! = JopFoo_df!, dom = spc, rng = spc, s = (diagonal=diag,))
 end
 
-JopBar_f!(d,m) = d .= m.^2
+JopBar_f!(d,m;kwargs...) = d .= m.^2
 JopBar_df!(δd,δm;mₒ,kwargs...) = δd .= 2 .* mₒ .* δm
 function JopBar(n)
     spc = JetSpace(Float64, n)
@@ -226,17 +226,33 @@ end
     F₁₂,F₂₃,F₃₁ = map(i->JopBar(10), 1:3)
     Z₂₂,Z₃₄ = map(i->JopZeroBlock(JetSpace(Float64,10), JetSpace(Float64,10)), 1:2)
 
+    @test iszero(Z₂₂)
+    @test !iszero(A₁₁)
+    @test !iszero(F₁₂)
+
     C₂₄ = A₂₄ ∘ JopBar(10)
 
     G = [A₁₁ F₁₂ A₁₃ A₁₄;
          A₂₁ Z₂₂ F₂₃ C₂₄;
          F₃₁ A₃₂ A₃₃ Z₃₄]
 
-    @test isa(@blockop(G), Jets.JopBlock)
+    @test isa(@blockop(G), JopNl{<:Jet{<:Jets.JetBSpace,<:Jets.JetBSpace,typeof(Jets.JetBlock_f!)}})
 
     F = @blockop [A₁₁ F₁₂ A₁₃ A₁₄;
                   A₂₁ Z₂₂ F₂₃ C₂₄;
                   F₃₁ A₃₂ A₃₃ Z₃₄]
+
+    @test nblocks(F) == (3,4)
+    @test nblocks(F,1) == 3
+    @test nblocks(F,2) == 4
+
+    _F₁₂ = getblock(JopNl,F,1,2)
+    m = rand(domain(F₁₂))
+    @test F₁₂*m ≈ _F₁₂*m
+
+    _A₁₁ = getblock(JopLn,F,1,1)
+    m = rand(domain(A₁₁))
+    @test A₁₁*m ≈ _A₁₁*m
 
     @test ones(domain(F)) ≈ ones(40)
     @test zeros(range(F)) ≈ zeros(30)
@@ -289,4 +305,60 @@ end
     K*δm
 
     @test L*δm ≈ K*δm
+end
+
+@testset "block operator, singleton" begin
+    B = JopBaz(rand(5,5))
+    A = @blockop [B for i=1:1, j=1:1]
+    m = rand(domain(A))
+    @test A*m ≈ B*m
+    d = rand(range(A))
+    @test A'*d ≈ B'*d
+
+    F = JopBar(5)
+    G = @blockop [F for i=1:1, j=1:1]
+    @test F*m ≈ G*m
+    J = jacobian(F, m)
+    @test J*m ≈ jacobian(G,m)*m
+    @test J'*d ≈ (jacobian(G,m)'*d)
+end
+
+@testset "block operator, tall-and-skinny" begin
+    B = [JopBaz(rand(5,5)) for i=1:3, j=1:1]
+    A = @blockop B
+    m = rand(domain(A))
+    @test A*m ≈ [B[1,1]*m;B[2,1]*m;B[3,1]*m]
+    d = rand(range(A))
+    @test A'*d ≈ B[1,1]'*d[1:5] + B[2,1]'*d[6:10] + B[3,1]'*d[11:15]
+
+    G = [JopBar(5) for i=1:3, j=1:1]
+    F = @blockop G
+    @test F*m ≈ [G[1,1]*m;G[2,1]*m;G[3,1]*m]
+    J = jacobian(F,m)
+    @test J*m ≈ [jacobian(G[1,1],m)*m;jacobian(G[2,1],m)*m;jacobian(G[3,1],m)*m]
+    @test J'*d ≈ jacobian(G[1,1],m)'*d[1:5] + jacobian(G[2,1],m)'*d[6:10] + jacobian(G[3,1],m)'*d[11:15]
+
+    B₁₁ = getblock(A,1,1)
+    @test isa(B₁₁,JopLn)
+    @test B₁₁*m ≈ B[1,1]*m
+
+    @test nblocks(A) == (3,1)
+    @test nblocks(A, 1) == 3
+    @test nblocks(A, 2) == 1
+end
+
+@testset "block operator, short-and-fat" begin
+    B = [JopBaz(rand(5,5)) for i=1:1, j=1:3]
+    A = @blockop B
+    m = rand(domain(A))
+    @test A*m ≈ B[1,1]*m[1:5] + B[1,2]*m[6:10] + B[1,3]*m[11:15]
+    d = rand(range(A))
+    @test A'*d ≈ [B[1,1]'*d;B[1,2]'*d;B[1,3]'*d]
+
+    G = [JopBar(5) for i=1:1, j=1:3]
+    F = @blockop G
+    @test F*m ≈ G[1,1]*m[1:5] + G[1,2]*m[6:10] + G[1,3]*m[11:15]
+    J = jacobian(F,m)
+    @test J*m ≈ jacobian(G[1,1],m[1:5])*m[1:5] + jacobian(G[1,2],m[6:10])*m[6:10] + jacobian(G[1,3],m[11:15])*m[11:15]
+    @test J'*d ≈ [jacobian(G[1,1],m[1:5])'*d;jacobian(G[1,2],m[6:10])'*d;jacobian(G[1,3],m[11:15])'*d]
 end
