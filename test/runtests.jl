@@ -128,6 +128,27 @@ end
     @test range(F) == JetSpace(Float64,10)
 end
 
+@testset "Symmetric space" begin
+    R = Jets.JetSSpace(Complex{Float64}, (4,4), [CartesianIndex((1,1)),CartesianIndex((3,3))])
+    @test size(R) == (4,4)
+    @test eltype(R) == Complex{Float64}
+    real.(ones(R)) ≈ real.(ones(Complex{Float64},4,4))
+    imag.(ones(R)) ≈ imag.(ones(Complex{Float64},4,4))
+    @test real.(zeros(R)) ≈ zeros(4,4)
+    @test imag.(zeros(R)) ≈ zeros(4,4)
+    @test size(rand(R)) == (4,4)
+    @test size(Array(R)) == (4,4)
+    @test eltype(Array(R)) == Complex{Float64}
+    x = rand(R)
+    y = x.A
+    @test norm(x) ≈ sqrt(2*(norm(y)^2) - real(conj(y[1,1])*y[1,1]) - real(conj(y[3,3])*y[3,3]))
+    @test norm(x,2) ≈ norm(x)
+    @test norm(x,1) ≈ 2*norm(y,1) - real(abs(y[1,1])) - real(abs(y[3,3]))
+    @test norm(x,Inf) ≈ norm(y,Inf)
+    x[1,1] = x[3,1] = 0
+    @test norm(x,0) ≈ 2*norm(y,0)-1
+end
+
 @testset "composition, linear" begin
     A₁,A₂,A₃,A₄ = map(d->JopBaz(rand(10,10)), 1:4)
     B₁,B₂,B₃,B₄ = map(A->state(A).A, (A₁,A₂,A₃,A₄))

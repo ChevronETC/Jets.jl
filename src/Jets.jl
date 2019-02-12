@@ -145,26 +145,31 @@ Base.:*(A::Jop, m::AbstractArray) = mul!(zeros(range(A)), A, m)
 # Symmetric spaces / arrays
 #
 struct JetSSpace{T,N} <: JetAbstractSpace{T,N}
-    nonsymindices::Vector{CaresianIndex{N}}
     n::NTuple{N,Int}
+    nonsymindices::Vector{CartesianIndex{N}}
 end
+JetSSpace(_T::Type{T}, n::NTuple{N,Int}, nonsymindices) where {T,N} = JetSSpace{T,N}(n, nonsymindices)
 
-for f in (:ones, :rand, :zeros)
-    @eval (Base.$f)(R::JetSSpace{T,N}) where {T,N} = SymmetricArray(R.nonsymindices, ($f)(T,size(R)))::SymmetricArray{T,N}
-end
-Base.Array(R::JetSSpace{T,N}) where {T,N} = SymmetricArray{T,N}(R.nonsymindices, Array{T,N}(undef, size(R)))
+Base.size(R::JetSSpace) = R.n
+Base.eltype(R::Type{JetSSpace{T,N}}) where {T,N} = T
+Base.eltype(R::Type{JetSSpace{T}}) where {T} = T
 
 struct SymmetricArray{T,N} <: AbstractArray{T,N}
-    nonsymindices::Vector{CartesianInex{N}}
     A::Array{T,N}
+    nonsymindices::Vector{CartesianIndex{N}}
 end
 
+Base.IndexStyle(::Type{T}) where {T<:SymmetricArray} = IndexLinear()
 Base.size(A::SymmetricArray) = size(A.A)
 Base.getindex(A::SymmetricArray, i::Integer) = A.A[i]
 Base.setindex!(A::SymmetricArray, v, i::Integer) = A.A[i] = v
-Base.IndexStyle(::Type{SymmetricArray}) = IndexLinear()
 
-function norm(itr::SymmetricArray, p::Real=2)
+for f in (:ones, :rand, :zeros)
+    @eval (Base.$f)(R::JetSSpace{T,N}) where {T,N} = SymmetricArray(($f)(T,size(R)), R.nonsymindices)::SymmetricArray{T,N}
+end
+Base.Array(R::JetSSpace{T,N}) where {T,N} = SymmetricArray{T,N}(Array{T,N}(undef, size(R)), R.nonsymindices)
+
+function LinearAlgebra.norm(itr::SymmetricArray, p::Real=2)
     isempty(itr) && return float(norm(zero(eltype(itr))))
     if p == 2
         return norm2(itr)
@@ -181,56 +186,56 @@ function norm(itr::SymmetricArray, p::Real=2)
     end
 end
 
-function Base.norm2(itr::SymmetricArray{T}) where {T}
-    n = zero(T)
-    for i in eachindex(itr)
+function norm2(itr::SymmetricArray{T}) where {T}
+    n = zero(real(T))
+    for i in CartesianIndices(size(itr))
         if i ∈ itr.nonsymindices
-            n += itr[i]^2
+            n += real(conj(itr[i]) * itr[i])
         else
-            n += 2*iter[i]^2
+            n += 2*real(conj(itr[i]) * itr[i])
         end
     end
     sqrt(n)
 end
 
-function Base.norm1(itr::SymmetricArray{T}) where {T}
-    n = zero(T)
-    for i in eachindex(itr)
+function norm1(itr::SymmetricArray{T}) where {T}
+    n = zero(real(T))
+    for i in CartesianIndices(size(itr))
         if i ∈ itr.nonsymindices
-            n += abs(itr[i])
+            n += real(abs(itr[i]))
         else
-            n += 2*abs(itr[i])
+            n += 2*real(abs(itr[i]))
         end
     end
     n
 end
 
-Base.normInf(itr::SymmetricArray) = normInf(itr)
+normInf(itr::SymmetricArray) = LinearAlgebra.normInf(itr.A)
 
-function Base.norm0(itr::SymmetricArray{T}) where {T}
-    n = zero(T)
-    for i in eachindex(itr)
+function norm0(itr::SymmetricArray{T}) where {T}
+    n = zero(real(T))
+    for i in CartesianIndices(size(itr))
         if i ∈ itr.nonsymindices
-            if iszero(itr[i])
-                n += one(T)
+            if !iszero(itr[i])
+                n += one(real(T))
             end
         else
-            if iszero(itr[i])
-                n += 2*one(T)
+            if !iszero(itr[i])
+                n += 2*one(real(T))
             end
         end
     end
     n
 end
 
-function Base.normp(itr::SymmetricArray{T}, p) where {T}
+function normp(itr::SymmetricArray{T}, p) where {T}
     _p = T(p)
     n = zero(T)
-    for i in eachindex(itr)
+    for i in CartesianIndices(size(itr))
         if i ∈ itr.nonsymindices
             n += itr[i]^_p
         else
-            n += 2* iter[i]^_p
+            n += 2* itr[i]^_p
         end
     end
     n^(1/_p)
