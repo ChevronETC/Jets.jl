@@ -26,11 +26,6 @@ Base.ndims(R::JetAbstractSpace{T,N}) where {T,N} = N
 Base.length(R::JetAbstractSpace) = prod(size(R))
 Base.reshape(x::AbstractArray, R::JetAbstractSpace) = reshape(x, size(R))
 
-for f in (:ones, :rand, :zeros)
-    @eval (Base.$f)(R::JetAbstractSpace{T,N}) where {T,N} = ($f)(T,size(R))::Array{T,N}
-end
-Base.Array(R::JetAbstractSpace{T,N}) where {T,N} = Array{T,N}(undef, size(R))
-
 struct JetSpace{T,N} <: JetAbstractSpace{T,N}
     n::NTuple{N,Int}
 end
@@ -40,6 +35,11 @@ JetSpace(_T::Type{T}, n::NTuple{N,Int}) where {T,N} = JetSpace{T,N}(n)
 Base.size(R::JetSpace) = R.n
 Base.eltype(R::Type{JetSpace{T,N}}) where {T,N} = T
 Base.eltype(R::Type{JetSpace{T}}) where {T} = T
+
+for f in (:ones, :rand, :zeros)
+    @eval (Base.$f)(R::JetSpace{T,N}) where {T,N} = ($f)(T,size(R))::Array{T,N}
+end
+Base.Array(R::JetSpace{T,N}) where {T,N} = Array{T,N}(undef, size(R))
 
 jet_missing(m) = error("not implemented")
 
@@ -144,102 +144,33 @@ Base.:*(A::Jop, m::AbstractArray) = mul!(zeros(range(A)), A, m)
 #
 # Symmetric spaces / arrays
 #
-struct JetSSpace{T,N} <: JetAbstractSpace{T,N}
+struct JetSSpace{T,N,F<:Function} <: JetAbstractSpace{T,N}
     n::NTuple{N,Int}
-    nonsymindices::Vector{CartesianIndex{N}}
+    M::NTuple{N,Int}
+    map::F
 end
-JetSSpace(_T::Type{T}, n::NTuple{N,Int}, nonsymindices) where {T,N} = JetSSpace{T,N}(n, nonsymindices)
+JetSSpace(_T::Type{T}, n::NTuple{N,Int}, M::NTuple{N,Int}, map::F) where {T,N,F} = JetSSpace{T,N,F}(n, M, map)
 
 Base.size(R::JetSSpace) = R.n
+Base.eltype(R::Type{JetSSpace{T,N,F}}) where {T,N,F} = T
 Base.eltype(R::Type{JetSSpace{T,N}}) where {T,N} = T
 Base.eltype(R::Type{JetSSpace{T}}) where {T} = T
 
-struct SymmetricArray{T,N} <: AbstractArray{T,N}
+struct SymmetricArray{T,N,F<:Function} <: AbstractArray{T,N}
     A::Array{T,N}
-    nonsymindices::Vector{CartesianIndex{N}}
+    n::NTuple{N,Int}
+    map::F
 end
 
-Base.IndexStyle(::Type{T}) where {T<:SymmetricArray} = IndexLinear()
-Base.size(A::SymmetricArray) = size(A.A)
-Base.getindex(A::SymmetricArray, i::Integer) = A.A[i]
-Base.setindex!(A::SymmetricArray, v, i::Integer) = A.A[i] = v
+Base.IndexStyle(::Type{T}) where {T<:SymmetricArray} = IndexCartesian()
+Base.size(A::SymmetricArray) = A.n
+Base.getindex(A::SymmetricArray{T,N}, I::Vararg{Int,N}) where {T,N} = A.A[A.map(I)]
+Base.setindex!(A::SymmetricArray{T,N}, v, I::Vararg{Int,N}) where {T,N} = A.A[A.map(I)] = v
 
 for f in (:ones, :rand, :zeros)
-    @eval (Base.$f)(R::JetSSpace{T,N}) where {T,N} = SymmetricArray(($f)(T,size(R)), R.nonsymindices)::SymmetricArray{T,N}
+    @eval (Base.$f)(R::JetSSpace{T,N,F}) where {T,N,F} = SymmetricArray(($f)(T,R.M), R.n, R.map)::SymmetricArray{T,N,F}
 end
-Base.Array(R::JetSSpace{T,N}) where {T,N} = SymmetricArray{T,N}(Array{T,N}(undef, size(R)), R.nonsymindices)
-
-function LinearAlgebra.norm(itr::SymmetricArray, p::Real=2)
-    isempty(itr) && return float(norm(zero(eltype(itr))))
-    if p == 2
-        return norm2(itr)
-    elseif p == 1
-        return norm1(itr)
-    elseif p == Inf
-        return normInf(itr)
-    elseif p == 0
-        return norm0(itr)
-    elseif p == -Inf
-        return normMinusInf(itr)
-    else
-        normp(itr, p)
-    end
-end
-
-function norm2(itr::SymmetricArray{T}) where {T}
-    n = zero(real(T))
-    for i in CartesianIndices(size(itr))
-        if i ∈ itr.nonsymindices
-            n += real(conj(itr[i]) * itr[i])
-        else
-            n += 2*real(conj(itr[i]) * itr[i])
-        end
-    end
-    sqrt(n)
-end
-
-function norm1(itr::SymmetricArray{T}) where {T}
-    n = zero(real(T))
-    for i in CartesianIndices(size(itr))
-        if i ∈ itr.nonsymindices
-            n += real(abs(itr[i]))
-        else
-            n += 2*real(abs(itr[i]))
-        end
-    end
-    n
-end
-
-normInf(itr::SymmetricArray) = LinearAlgebra.normInf(itr.A)
-
-function norm0(itr::SymmetricArray{T}) where {T}
-    n = zero(real(T))
-    for i in CartesianIndices(size(itr))
-        if i ∈ itr.nonsymindices
-            if !iszero(itr[i])
-                n += one(real(T))
-            end
-        else
-            if !iszero(itr[i])
-                n += 2*one(real(T))
-            end
-        end
-    end
-    n
-end
-
-function normp(itr::SymmetricArray{T}, p) where {T}
-    _p = T(p)
-    n = zero(T)
-    for i in CartesianIndices(size(itr))
-        if i ∈ itr.nonsymindices
-            n += itr[i]^_p
-        else
-            n += 2* itr[i]^_p
-        end
-    end
-    n^(1/_p)
-end
+Base.Array(R::JetSSpace{T,N,F}) where {T,N,F} = SymmetricArray{T,N,F}(Array{T,N}(undef, R.M), R.n, R.map)
 
 #
 # composition
@@ -304,15 +235,61 @@ struct JetBSpace{T,S<:JetAbstractSpace} <: JetAbstractSpace{T,1}
 end
 
 Base.size(R::JetBSpace) = (R.indices[end][end],)
-Base.eltype(R::Type{JetBSpace{T,N}}) where {T,N} = T
+Base.eltype(R::Type{JetBSpace{T,S}}) where {T,S} = T
 Base.eltype(R::Type{JetBSpace{T}}) where {T} = T
 
 indices(R::JetBSpace, iblock::Integer) = R.indices[iblock]
 space(R::JetBSpace, iblock::Integer) = R.spaces[iblock]
+nblocks(R::JetBSpace) = length(R.spaces)
 
-getblock!(x::AbstractArray, R::JetBSpace, iblock::Integer, xblock::AbstractArray) = xblock .= x[indices(R, iblock)]
-getblock(x::AbstractArray, R::JetBSpace, iblock::Integer) = getblock!(x, R, iblock, Array(R.spaces[iblock]))
-setblock!(x::AbstractArray, R::JetBSpace, iblock::Integer, xblock::AbstractArray) = x[indices(R, iblock)] .= xblock
+struct BlockArray{T,A<:AbstractArray{T}} <: AbstractArray{T,1}
+    arrays::Vector{A}
+    indices::Vector{UnitRange{Int}}
+end
+
+Base.IndexStyle(::Type{T}) where {T<:BlockArray} = IndexLinear()
+Base.size(A::BlockArray) = (A.indices[end][end],)
+
+function Base.getindex(A::BlockArray, i::Int)
+    j = findfirst(rng->i∈rng, A.indices)::Int
+    A.arrays[j][i-A.indices[j][1]+1]
+end
+function Base.setindex!(A::BlockArray, v, i::Int)
+    j = findfirst(rng->i∈rng, A.indices)::Int
+    A.arrays[j][i-A.indices[j][1]+1] = v
+end
+
+LinearAlgebra.norm(x::BlockArray, p::Real=2) = mapreduce(_x->norm(_x,p)^p, +, x.arrays)^(1/p)
+
+function LinearAlgebra.dot(x::BlockArray{T}, y::BlockArray{T}) where {T}
+    a = zero(T)
+    for i = 1:length(x.arrays)
+        a += dot(x.arrays[i], y.arrays[i])
+    end
+    a
+end
+
+indices(x::BlockArray, i) = x.indices[i]
+
+function Base.convert(::Type{Array}, x::BlockArray{T}) where {T}
+    _x = Vector{T}(undef, length(x))
+    for i = 1:length(x.indices)
+        _x[indices(x,i)] .= vec(x.arrays[i])
+    end
+    _x
+end
+
+getblock(x::BlockArray, iblock) = x.arrays[iblock]
+getblock!(x::BlockArray, iblock, xblock::AbstractArray) = xblock .= x.arrays[iblock]
+setblock!(x::BlockArray, iblock, xblock) = x.arrays[iblock] .= xblock
+
+getblock(x::AbstractArray, iblock) = x
+getblock!(x::AbstractArray, iblock, xblock::AbstractArray) = xblock .= x
+setblock!(x::AbstractArray, iblock, xblock) = x .= xblock
+
+for f in (:Array, :ones, :rand, :zeros)
+    @eval (Base.$f)(R::JetBSpace{T,S}) where {T,S<:JetAbstractSpace} = BlockArray([($f)(space(R, i)) for i=1:length(R.spaces)], R.indices)
+end
 
 function JetBlock(jets::AbstractMatrix{T}) where {T<:Jet}
     dom = JetBSpace([domain(jets[1,i]) for i=1:size(jets,2)])
@@ -340,18 +317,16 @@ function JetBlock_f!(d::AbstractArray, m::AbstractArray; jets, dom, rng, kwargs.
         dtmp = zeros(range(jets[1,1]))
     end
     for iblkrow = 1:size(jets, 1)
-        _d = reshape(@view(d[indices(rng, iblkrow)]), range(jets[iblkrow,1]))
+        _d = getblock(d, iblkrow)
         if size(jets, 2) > 1
             dtmp = length(dtmp) == length(range(jets[iblkrow,1])) ? reshape(dtmp, range(jets[iblkrow,1])) : zeros(range(jets[iblkrow,1]))
         end
         for iblkcol = 1:size(jets, 2)
-            if !iszero(jets[iblkrow,iblkcol])
-                if size(jets, 2) == 1
-                    f!(_d, jets[iblkrow,iblkcol], m; state(jets[iblkrow,iblkcol])...)
-                else
-                    _m = reshape(@view(m[indices(dom, iblkcol)]), domain(jets[iblkrow,iblkcol]))
-                    _d .+= f!(dtmp, jets[iblkrow,iblkcol], _m; state(jets[iblkrow,iblkcol])...)
-                end
+            _m = getblock(m, iblkcol)
+            if size(jets, 2) == 1
+                f!(_d, jets[iblkrow,iblkcol], m; state(jets[iblkrow,iblkcol])...)
+            else
+                _d .+= f!(dtmp, jets[iblkrow,iblkcol], _m; state(jets[iblkrow,iblkcol])...)
             end
         end
     end
@@ -364,16 +339,16 @@ function JetBlock_df!(d::AbstractArray, m::AbstractArray; jets, dom, rng, kwargs
         dtmp = zeros(range(jets[1,1]))
     end
     for iblkrow = 1:size(jets, 1)
-        _d = reshape(@view(d[indices(rng, iblkrow)]), range(jets[iblkrow,1]))
+        _d = getblock(d, iblkrow)
         if size(jets, 2) > 1
             dtmp = length(dtmp) == length(range(jets[iblkrow,1])) ? reshape(dtmp, range(jets[iblkrow,1])) : zeros(range(jets[iblkrow,1]))
         end
         for iblkcol = 1:size(jets, 2)
+            _m = getblock(m, iblkcol)
             if !iszero(jets[iblkrow,iblkcol])
                 if size(jets, 2) == 1
-                    df!(_d, jets[iblkrow,iblkcol], m; mₒ = point(jets[iblkrow,iblkcol]), state(jets[iblkrow,iblkcol])...)
+                    df!(_d, jets[iblkrow,iblkcol], _m; mₒ = point(jets[iblkrow,iblkcol]), state(jets[iblkrow,iblkcol])...)
                 else
-                    _m = reshape(@view(m[indices(dom, iblkcol)]), domain(jets[iblkrow,iblkcol]))
                     _d .+= df!(dtmp, jets[iblkrow,iblkcol], _m; mₒ = point(jets[iblkrow,iblkcol]), state(jets[iblkrow,iblkcol])...)
                 end
             end
@@ -388,16 +363,16 @@ function JetBlock_df′!(m::AbstractArray, d::AbstractArray; jets, dom, rng, kwa
         mtmp = zeros(domain(jets[1,1]))
     end
     for iblkcol = 1:size(jets, 2)
-        _m = reshape(@view(m[indices(dom, iblkcol)]), domain(jets[1,iblkcol]))
+        _m = getblock(m, iblkcol)
         if size(jets, 1) > 1
             mtmp = length(mtmp) == length(domain(jets[1,iblkcol])) ? reshape(mtmp, domain(jets[1,iblkcol])) : zeros(domain(jets[1,iblkcol]))
         end
         for iblkrow = 1:size(jets, 1)
+            _d = getblock(d, iblkrow)
             if !iszero(jets[iblkrow,iblkcol])
                 if size(jets, 1) == 1
-                    df′!(_m, jets[iblkrow,iblkcol], d; mₒ=point(jets[iblkrow,iblkcol]), state(jets[iblkrow,iblkcol])...)
+                    df′!(_m, jets[iblkrow,iblkcol], _d; mₒ=point(jets[iblkrow,iblkcol]), state(jets[iblkrow,iblkcol])...)
                 else
-                    _d = reshape(@view(d[indices(rng, iblkrow)]), range(jets[iblkrow,iblkcol]))
                     _m .+= df′!(mtmp, jets[iblkrow,iblkcol], _d; mₒ=point(jets[iblkrow,iblkcol]), state(jets[iblkrow,iblkcol])...)
                 end
             end
@@ -410,7 +385,7 @@ function point!(jet::Jet{D,R,typeof(JetBlock_f!)}, mₒ::AbstractArray) where {D
     jets = state(jet).jets
     dom = domain(jet)
     for icol = 1:size(jets, 2), irow = 1:size(jets, 1)
-        point!(jets[irow,icol], reshape(@view(mₒ[indices(dom, icol)]), domain(jets[irow,icol])))
+        point!(jets[irow,icol], getblock(mₒ, icol))
     end
     mₒ
 end
