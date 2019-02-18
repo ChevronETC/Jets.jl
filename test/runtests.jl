@@ -129,24 +129,31 @@ end
 end
 
 @testset "Symmetric space" begin
-    R = Jets.JetSSpace(Complex{Float64}, (4,4), [CartesianIndex((1,1)),CartesianIndex((3,3))])
-    @test size(R) == (4,4)
+    function indexmap(I)
+        if I[1] < 5
+            return CartesianIndex(I)
+        else
+            return CartesianIndex((I[1]-4,I[2]))
+        end
+    end
+    R = Jets.JetSSpace(Complex{Float64}, (8,4), (4,4), indexmap)
+    @test size(R) == (8,4)
     @test eltype(R) == Complex{Float64}
-    real.(ones(R)) ≈ real.(ones(Complex{Float64},4,4))
-    imag.(ones(R)) ≈ imag.(ones(Complex{Float64},4,4))
-    @test real.(zeros(R)) ≈ zeros(4,4)
-    @test imag.(zeros(R)) ≈ zeros(4,4)
-    @test size(rand(R)) == (4,4)
-    @test size(Array(R)) == (4,4)
+    real.(ones(R)) ≈ real.(ones(Complex{Float64},8,4))
+    imag.(ones(R)) ≈ imag.(ones(Complex{Float64},8,4))
+    @test real.(zeros(R)) ≈ zeros(8,4)
+    @test imag.(zeros(R)) ≈ zeros(8,4)
+    @test size(rand(R)) == (8,4)
+    @test size(Array(R)) == (8,4)
     @test eltype(Array(R)) == Complex{Float64}
     x = rand(R)
     y = x.A
-    @test norm(x) ≈ sqrt(2*(norm(y)^2) - real(conj(y[1,1])*y[1,1]) - real(conj(y[3,3])*y[3,3]))
+    @test norm(x) ≈ sqrt(2*(norm(y)^2))
     @test norm(x,2) ≈ norm(x)
-    @test norm(x,1) ≈ 2*norm(y,1) - real(abs(y[1,1])) - real(abs(y[3,3]))
+    @test norm(x,1) ≈ 2*norm(y,1)
     @test norm(x,Inf) ≈ norm(y,Inf)
-    x[1,1] = x[3,1] = 0
-    @test norm(x,0) ≈ 2*norm(y,0)-1
+    x[1,1] = x[6,1] = 0
+    @test norm(x,0) ≈ 2*norm(y,0)
 end
 
 @testset "composition, linear" begin
@@ -241,6 +248,21 @@ end
     @test J₄₃₂₁ * δm ≈ L₄₃₂₁ * δm
 end
 
+@testset "block arrays" begin
+    R = Jets.JetBSpace([JetSpace(Float64,2),JetSpace(Float64,2,2),JetSpace(Float64,2,3)])
+    x = ones(R)
+    @test getblock(x,1) ≈ ones(2)
+    @test getblock(x,2) ≈ ones(2,2)
+    @test getblock(x,3) ≈ ones(2,3)
+    setblock!(x,1,π)
+    setblock!(x,2,2π)
+    setblock!(x,3,3*pi*ones(2,3))
+    @test getblock!(x, 2, Array{Float64}(undef,2,2)) ≈ 2π*ones(2,2)
+    _x = convert(Array, x)
+    @test _x ≈ x
+    @test norm(x) ≈ norm(_x)
+end
+
 @testset "block operator" begin
     B₁₁,B₁₃,B₁₄,B₂₁,B₂₃,B₂₄,B₃₂,B₃₃ = map(i->rand(10,10), 1:8)
     A₁₁,A₁₃,A₁₄,A₂₁,A₂₃,A₂₄,A₃₂,A₃₃ = map(B->JopBaz(B), (B₁₁,B₁₃,B₁₄,B₂₁,B₂₃,B₂₄,B₃₂,B₃₃))
@@ -300,24 +322,6 @@ end
 
     @test δd ≈ L*δm
     @test L'*δd ≈ J'*δd
-
-    @test getblock(δd, range(L), 2) ≈ δd[11:20]
-    setblock!(δd, range(L), 2, π*ones(10))
-    @test getblock(δd, range(L), 2) ≈ π*ones(10)
-
-    @test getblock(d, range(F), 2) ≈ d[11:20]
-    setblock!(d, range(F), 2, π*ones(10))
-    @test getblock(d, range(F), 2) ≈ π*ones(10)
-
-    @test getblock(δm, domain(L), 2) ≈ δm[11:20]
-    setblock!(δm, domain(L), 2, π*ones(10))
-    @test getblock(δm, domain(L), 2) ≈ π*ones(10)
-
-    @test getblock(m, domain(F), 2) ≈ m[11:20]
-    setblock!(m, domain(F), 2, π*ones(10))
-    @test getblock(m, domain(F), 2) ≈ π*ones(10)
-
-    @test getblock!(m, domain(F), 2, Array(space(domain(F),2))) ≈ π*ones(10)
 
     @test eltype(L) == Float64
     K = convert(Array, L)
