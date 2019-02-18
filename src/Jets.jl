@@ -373,15 +373,6 @@ function JetBlock_df′!(m::AbstractArray, d::AbstractArray; jets, dom, rng, kwa
                 if size(jets, 1) == 1
                     df′!(_m, jets[iblkrow,iblkcol], _d; mₒ=point(jets[iblkrow,iblkcol]), state(jets[iblkrow,iblkcol])...)
                 else
-                    @show size(_m)
-                    @show size(mtmp)
-                    @show size(_d)
-                    @show iblkrow,iblkcol
-                    @show typeof(_d)
-                    @show typeof(mtmp)
-                    @show jets[iblkrow,iblkcol]
-                    df′!(mtmp, jets[iblkrow,iblkcol], _d; mₒ=point(jets[iblkrow,iblkcol]), state(jets[iblkrow,iblkcol])...)
-                    @show size(x)
                     _m .+= df′!(mtmp, jets[iblkrow,iblkcol], _d; mₒ=point(jets[iblkrow,iblkcol]), state(jets[iblkrow,iblkcol])...)
                 end
             end
