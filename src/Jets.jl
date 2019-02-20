@@ -167,6 +167,14 @@ Base.size(A::SymmetricArray) = A.n
 Base.getindex(A::SymmetricArray{T,N}, I::Vararg{Int,N}) where {T,N} = A.A[A.map(I)]
 Base.setindex!(A::SymmetricArray{T,N}, v, I::Vararg{Int,N}) where {T,N} = A.A[A.map(I)] = v
 
+# minimal broadcasting logic for SymmetricArray --<
+struct SymmetricArrayStyle <: Broadcast.ArrayStyle{SymmetricArray}() end
+Base.BroadcastStyle(::Type{<:SymmetricArray{T,N}}) where {T,N} = SymmetricArrayStyle{N}()
+SymmetricArrayStyle(::Val{N}) = SymmetricArrayStyle{N}()
+
+function Base.similar(bc::Broadcast.Broadcasted{SymmetricArrayStyle})
+# -->
+
 for f in (:ones, :rand, :zeros)
     @eval (Base.$f)(R::JetSSpace{T,N,F}) where {T,N,F} = SymmetricArray(($f)(T,R.M), R.n, R.map)::SymmetricArray{T,N,F}
 end
@@ -258,6 +266,22 @@ function Base.setindex!(A::BlockArray, v, i::Int)
     j = findfirst(rng->i∈rng, A.indices)::Int
     A.arrays[j][i-A.indices[j][1]+1] = v
 end
+
+# minimal broadcasting logic for BlockArray --<
+struct BlockArrayStyle <: Broadcast.AbstractArrayStyle{1} end
+Base.BroadcastStyle(::Type{<:BlockArray}) = BlockArrayStyle()
+BlockArrayStyle(::Val{1}) = BlockArrayStyle()
+
+function Base.similar(bc::Broadcast.Broadcasted{BlockArrayStyle}, ::Type{T}) where {T}
+    A = find_blockarray(bc)
+    BlockArray([similar(A.arrays[i]) for i=1:length(A.arrays)], copy(A.indices))
+end
+find_blockarray(bc::Broadcast.Broadcasted) = find_blockarray(bc.args)
+find_blockarray(args::Tuple) = find_blockarray(find_blockarray(args[1]), Base.tail(args))
+find_blockarray(x) = x
+find_blockarray(a::BlockArray, rest) = a
+find_blockarray(::Any, rest) = find_blockarray(rest)
+# -->
 
 LinearAlgebra.norm(x::BlockArray, p::Real=2) = mapreduce(_x->norm(_x,p)^p, +, x.arrays)^(1/p)
 
