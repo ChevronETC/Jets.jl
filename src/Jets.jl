@@ -85,7 +85,7 @@ JopNl(;kwargs...) = JopNl(Jet(;kwargs...))
 struct JopLn{T<:Jet} <: Jop{T}
     jet::T
 end
-JopLn(jet::Jet, mₒ::AbstractArray) = begin point!(jet, mₒ); JopLn(jet) end
+JopLn(jet::Jet, mₒ::AbstractArray) = JopLn(point!(jet, mₒ))
 JopLn(;kwargs...) = JopLn(Jet(;kwargs...))
 
 struct JopAdjoint{J<:Jet,T<:Jop{J}} <: Jop{J}
@@ -98,7 +98,7 @@ Base.eltype(jet::Jet) = promote_type(eltype(domain(jet)), eltype(range(jet)))
 state(jet::Jet) = jet.s
 state!(jet, s) = jet.s = merge(jet.s, s)
 point(jet::Jet) = jet.mₒ
-point!(jet::Jet, mₒ::AbstractArray) = jet.mₒ = mₒ
+point!(jet::Jet, mₒ::AbstractArray) = begin jet.mₒ = mₒ; jet end
 
 jet(A::Jop) = A.jet
 jet(A::JopAdjoint) = jet(A.op)
@@ -122,15 +122,15 @@ function shape(A::Union{Jet,Jop}, i)
 end
 shape(A::Union{Jet,Jop}) = (shape(A, 1), shape(A, 2))
 
-shape(A::AbstractMatrix,i) = size(A, i)
-shape(A::AbstractMatrix) = size(A)
+shape(A::AbstractMatrix,i) = (size(A, i),)
+shape(A::AbstractMatrix) = ((size(A, 1),), (size(A, 2),))
 
 Base.size(A::Union{Jet,Jop}, i) = prod(shape(A, i))
 Base.size(A::Union{Jet,Jop}) = (size(A, 1), size(A, 2))
 
 jacobian(jet::Jet, mₒ::AbstractArray) = JopLn(jet, mₒ)
 jacobian(F::JopNl, mₒ::AbstractArray) = jacobian(jet(F), mₒ)
-jacobian(A::JopLn, mₒ::AbstractArray) = A
+jacobian(A::Union{JopLn,AbstractMatrix}, mₒ::AbstractArray) = A
 
 Base.adjoint(A::JopLn) = JopAdjoint(A)
 Base.adjoint(A::JopAdjoint) = A.op
@@ -211,7 +211,7 @@ function point!(jet::Jet{D,R,typeof(JetComposite_f!)}, mₒ::AbstractArray) wher
             _m = f!(zeros(range(jets[i])), jets[i], _m; mₒ = point(jets[i]), state(jets[i])...)
         end
     end
-    mₒ
+    jet
 end
 
 #
@@ -270,6 +270,8 @@ function LinearAlgebra.dot(x::BlockArray{T}, y::BlockArray{T}) where {T}
 end
 
 indices(x::BlockArray, i) = x.indices[i]
+
+nblocks(x::BlockArray) = length(x.indices)
 
 function Base.convert(::Type{Array}, x::BlockArray{T}) where {T}
     _x = Vector{T}(undef, length(x))
@@ -387,7 +389,7 @@ function point!(jet::Jet{D,R,typeof(JetBlock_f!)}, mₒ::AbstractArray) where {D
     for icol = 1:size(jets, 2), irow = 1:size(jets, 1)
         point!(jets[irow,icol], getblock(mₒ, icol))
     end
-    mₒ
+    jet
 end
 
 nblocks(jet::Jet{D,R,typeof(JetBlock_f!)}) where {D<:JetAbstractSpace,R<:JetAbstractSpace}= size(state(jet).jets)
