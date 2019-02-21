@@ -89,6 +89,11 @@ F = @blockop _F
 domainF = domain(F)
 m = rand(domain(F))
 d = rand(range(F))
+e = rand(range(F))
+f = rand(range(F))
+d′ = rand(Float64,size(range(F)))
+e′ = rand(Float64,size(range(F)))
+f′ = rand(Float64,size(range(F)))
 J = jacobian(F, m)
 SUITE["Block, homogeneous"] = BenchmarkGroup()
 SUITE["Block, homogeneous"]["construct"] = @benchmarkable @blockop $_F
@@ -104,6 +109,8 @@ SUITE["Block, homogeneous"]["domain"] = @benchmarkable domain($F)
 SUITE["Block, homogeneous"]["range"] = @benchmarkable range($F)
 SUITE["Block, homogeneous"]["block"] = @benchmarkable getblock($m, 2)
 SUITE["Block, homogeneous"]["block!"] = @benchmarkable setblock!($m, 2, $(rand(100)))
+SUITE["Block, homogeneous"]["broadcast"] = @benchmarkable f .= d .+ e
+SUITE["Block, homogeneous"]["broadcast (base-case)"] = @benchmarkable f′ .= d′ .+ e′
 
 x = rand(100)
 _F = [JopBar(100) JopFoo(x) JopBar(100) ; JopBar(100) JopFoo(x) JopBar(100)]
@@ -111,6 +118,11 @@ F = @blockop _F
 domainF = domain(F)
 m = rand(domain(F))
 d = rand(range(F))
+e = rand(range(F))
+f = rand(range(F))
+d′ = rand(Float64,size(range(F)))
+e′ = rand(Float64,size(range(F)))
+f′ = rand(Float64,size(range(F)))
 J = jacobian(F, m)
 SUITE["Block, heterogeneous"] = BenchmarkGroup()
 SUITE["Block, heterogeneous"]["construct"] = @benchmarkable @blockop $_F
@@ -124,7 +136,9 @@ SUITE["Block, heterogeneous"]["shape"] = @benchmarkable shape($F)
 SUITE["Block, heterogeneous"]["size"] = @benchmarkable size($F)
 SUITE["Block, heterogeneous"]["domain"] = @benchmarkable domain($F)
 SUITE["Block, heterogeneous"]["range"] = @benchmarkable range($F)
-SUITE["Block, homogeneous"]["block"] = @benchmarkable getblock($m, 2)
-SUITE["Block, homogeneous"]["block!"] = @benchmarkable setblock!($d, 2, $(rand(100)))
+SUITE["Block, heterogeneous"]["block"] = @benchmarkable getblock($m, 2)
+SUITE["Block, heterogeneous"]["block!"] = @benchmarkable setblock!($d, 2, $(rand(100)))
+SUITE["Block, heterogeneous"]["broadcast"] = @benchmarkable f .= d .+ e
+SUITE["Block, heterogeneous"]["broadcast (base-case)"] = @benchmarkable f′ .= d′ .+ e′
 
 SUITE
