@@ -128,14 +128,15 @@ end
     @test range(F) == JetSpace(Float64,10)
 end
 
-@testset "Symmetric space" begin
-    function indexmap(I)
-        if I[1] < 5
-            return CartesianIndex(I)
-        else
-            return CartesianIndex((I[1]-4,I[2]))
-        end
+function indexmap(I)
+    if I[1] < 5
+        return CartesianIndex(I)
+    else
+        return CartesianIndex((I[1]-4,I[2]))
     end
+end
+
+@testset "Symmetric space" begin
     R = Jets.JetSSpace(Complex{Float64}, (8,4), (4,4), indexmap)
     @test size(R) == (8,4)
     @test eltype(R) == Complex{Float64}
@@ -154,6 +155,30 @@ end
     @test norm(x,Inf) ≈ norm(y,Inf)
     x[1,1] = x[6,1] = 0
     @test norm(x,0) ≈ 2*norm(y,0)
+end
+
+@testset "Symmetric spaces, broadcast" begin
+    R = Jets.JetSSpace(Complex{Float64}, (8,4), (4,4), indexmap)
+    u = rand(R)
+    v = rand(R)
+    w = rand(R)
+    a = rand(Float64)
+    b = rand(Float64)
+    c = rand(Float64)
+    x = a*u .+ b*v .+ c*w
+    @test typeof(x) == Jets.SymmetricArray{Complex{Float64},2,typeof(indexmap)}
+
+    for i2 = 1:4, i1 = 1:4
+        @test x.A[i1,i2] ≈ a*u.A[i1,i2] + b*v.A[i1,i2] + c*w.A[i1,i2]
+    end
+
+    y = zeros(R)
+    y .= x
+    @test typeof(x) == Jets.SymmetricArray{Complex{Float64},2,typeof(indexmap)}
+
+    for i2 = 1:4, i1 = 1:4
+        @test y.A[i1,i2] ≈ a*u.A[i1,i2] + b*v.A[i1,i2] + c*w.A[i1,i2]
+    end
 end
 
 @testset "composition, linear" begin
@@ -261,6 +286,34 @@ end
     _x = convert(Array, x)
     @test _x ≈ x
     @test norm(x) ≈ norm(_x)
+end
+
+@testset "block arrays, broadcasting" begin
+    R = Jets.JetBSpace([JetSpace(Float64,2),JetSpace(Float64,2,2),JetSpace(Float64,2,3)])
+    u = rand(R)
+    v = rand(R)
+    w = rand(R)
+    a = rand(Float64)
+    b = rand(Float64)
+    c = rand(Float64)
+    x = a*u .+ b*v .+ c*w
+    @test typeof(x) == Jets.BlockArray{Float64,Array{Float64}}
+
+    for i = 1:length(x.arrays)
+        for j = 1:length(x.arrays[i])
+            @test x.arrays[i][j] ≈ a*u.arrays[i][j] + b*v.arrays[i][j] + c*w.arrays[i][j]
+        end
+    end
+
+    y = zeros(R)
+    y .= x
+    @test typeof(y) == Jets.BlockArray{Float64,Array{Float64}}
+
+    for i = 1:length(x.arrays)
+        for j = 1:length(x.arrays[i])
+            @test y.arrays[i][j] ≈ a*u.arrays[i][j] + b*v.arrays[i][j] + c*w.arrays[i][j]
+        end
+    end
 end
 
 @testset "block operator" begin

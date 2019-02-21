@@ -168,11 +168,17 @@ Base.getindex(A::SymmetricArray{T,N}, I::Vararg{Int,N}) where {T,N} = A.A[A.map(
 Base.setindex!(A::SymmetricArray{T,N}, v, I::Vararg{Int,N}) where {T,N} = A.A[A.map(I)] = v
 
 # minimal broadcasting logic for SymmetricArray --<
-struct SymmetricArrayStyle <: Broadcast.ArrayStyle{SymmetricArray}() end
-Base.BroadcastStyle(::Type{<:SymmetricArray{T,N}}) where {T,N} = SymmetricArrayStyle{N}()
-SymmetricArrayStyle(::Val{N}) = SymmetricArrayStyle{N}()
+Base.BroadcastStyle(::Type{<:SymmetricArray}) = Broadcast.ArrayStyle{SymmetricArray}()
 
-function Base.similar(bc::Broadcast.Broadcasted{SymmetricArrayStyle})
+function Base.similar(bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{SymmetricArray}}, ::Type{T}) where {T}
+    A = find_symmetricarray(bc)
+    SymmetricArray(similar(Array{T}, axes(bc)), A.n, A.map)
+end
+find_symmetricarray(bc::Broadcast.Broadcasted) = find_symmetricarray(bc.args)
+find_symmetricarray(args::Tuple) = find_symmetricarray(find_symmetricarray(args[1]), Base.tail(args))
+find_symmetricarray(x) = x
+find_symmetricarray(a::SymmetricArray, rest) = a
+find_symmetricarray(::Any, rest) = find_symmetricarray(rest)
 # -->
 
 for f in (:ones, :rand, :zeros)
