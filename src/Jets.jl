@@ -273,6 +273,8 @@ function Base.setindex!(A::BlockArray, v, i::Int)
     A.arrays[j][i-A.indices[j][1]+1] = v
 end
 
+Base.similar(A::BlockArray) = BlockArray([similar(A.arrays[i]) for i=1:length(A.arrays)], A.indices)
+
 # minimal broadcasting logic for BlockArray --<
 struct BlockArrayStyle <: Broadcast.AbstractArrayStyle{1} end
 Base.BroadcastStyle(::Type{<:BlockArray}) = BlockArrayStyle()
