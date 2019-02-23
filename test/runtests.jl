@@ -148,6 +148,8 @@ end
     @test size(Array(R)) == (8,4)
     @test eltype(Array(R)) == Complex{Float64}
     x = rand(R)
+    z = similar(x)
+    @test typeof(z) == Jets.SymmetricArray{Complex{Float64},2,typeof(indexmap)}
     y = x.A
     @test norm(x) ≈ sqrt(2*(norm(y)^2))
     @test norm(x,2) ≈ norm(x)
