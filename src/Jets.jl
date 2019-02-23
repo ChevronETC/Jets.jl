@@ -162,12 +162,14 @@ struct SymmetricArray{T,N,F<:Function} <: AbstractArray{T,N}
     map::F
 end
 
+# SymmetricArray array interface implementation <--
 Base.IndexStyle(::Type{T}) where {T<:SymmetricArray} = IndexCartesian()
 Base.size(A::SymmetricArray) = A.n
 Base.getindex(A::SymmetricArray{T,N}, I::Vararg{Int,N}) where {T,N} = A.A[A.map(I)]
 Base.setindex!(A::SymmetricArray{T,N}, v, I::Vararg{Int,N}) where {T,N} = A.A[A.map(I)] = v
+# -->
 
-# minimal broadcasting logic for SymmetricArray --<
+# SymmetricArray broadcasting interface implementation --<
 Base.BroadcastStyle(::Type{<:SymmetricArray}) = Broadcast.ArrayStyle{SymmetricArray}()
 
 function Base.similar(bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{SymmetricArray}}, ::Type{T}) where {T}
@@ -179,6 +181,8 @@ find_symmetricarray(args::Tuple) = find_symmetricarray(find_symmetricarray(args[
 find_symmetricarray(x) = x
 find_symmetricarray(a::SymmetricArray, rest) = a
 find_symmetricarray(::Any, rest) = find_symmetricarray(rest)
+
+Base.similar(A::SymmetricArray) = SymmetricArray(similar(A.A), A.n, A.map)
 # -->
 
 for f in (:ones, :rand, :zeros)
@@ -261,6 +265,7 @@ struct BlockArray{T,A<:AbstractArray{T}} <: AbstractArray{T,1}
     indices::Vector{UnitRange{Int}}
 end
 
+# BlockArray array interface implementation <--
 Base.IndexStyle(::Type{T}) where {T<:BlockArray} = IndexLinear()
 Base.size(A::BlockArray) = (A.indices[end][end],)
 
@@ -274,6 +279,29 @@ function Base.setindex!(A::BlockArray, v, i::Int)
 end
 
 Base.similar(A::BlockArray) = BlockArray([similar(A.arrays[i]) for i=1:length(A.arrays)], A.indices)
+
+LinearAlgebra.norm(x::BlockArray, p::Real=2) = mapreduce(_x->norm(_x,p)^p, +, x.arrays)^(1/p)
+
+function LinearAlgebra.dot(x::BlockArray{T}, y::BlockArray{T}) where {T}
+    a = zero(T)
+    for i = 1:length(x.arrays)
+        a += dot(x.arrays[i], y.arrays[i])
+    end
+    a
+end
+
+indices(x::BlockArray, i) = x.indices[i]
+
+nblocks(x::BlockArray) = length(x.indices)
+
+function Base.convert(::Type{Array}, x::BlockArray{T}) where {T}
+    _x = Vector{T}(undef, length(x))
+    for i = 1:length(x.indices)
+        _x[indices(x,i)] .= vec(x.arrays[i])
+    end
+    _x
+end
+# -->
 
 # BlockArray broadcasting implementation --<
 struct BlockArrayStyle <: Broadcast.AbstractArrayStyle{1} end
@@ -299,28 +327,6 @@ function Base.copyto!(dest::BlockArray{T,<:AbstractArray{T,N}}, bc::Broadcast.Br
     dest
 end
 # -->
-
-LinearAlgebra.norm(x::BlockArray, p::Real=2) = mapreduce(_x->norm(_x,p)^p, +, x.arrays)^(1/p)
-
-function LinearAlgebra.dot(x::BlockArray{T}, y::BlockArray{T}) where {T}
-    a = zero(T)
-    for i = 1:length(x.arrays)
-        a += dot(x.arrays[i], y.arrays[i])
-    end
-    a
-end
-
-indices(x::BlockArray, i) = x.indices[i]
-
-nblocks(x::BlockArray) = length(x.indices)
-
-function Base.convert(::Type{Array}, x::BlockArray{T}) where {T}
-    _x = Vector{T}(undef, length(x))
-    for i = 1:length(x.indices)
-        _x[indices(x,i)] .= vec(x.arrays[i])
-    end
-    _x
-end
 
 getblock(x::BlockArray, iblock) = x.arrays[iblock]
 getblock!(x::BlockArray, iblock, xblock::AbstractArray) = xblock .= x.arrays[iblock]
