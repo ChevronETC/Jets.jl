@@ -372,10 +372,10 @@ function JetBlock_f!(d::AbstractArray, m::AbstractArray; jets, dom, rng, kwargs.
         end
         for iblkcol = 1:size(jets, 2)
             _m = getblock(m, iblkcol)
-            if size(jets, 2) == 1
-                f!(_d, jets[iblkrow,iblkcol], m; state(jets[iblkrow,iblkcol])...)
-            else
+            if size(jets, 2) > 1
                 _d .+= f!(dtmp, jets[iblkrow,iblkcol], _m; state(jets[iblkrow,iblkcol])...)
+            else
+                f!(_d, jets[iblkrow,iblkcol], m; state(jets[iblkrow,iblkcol])...)
             end
         end
     end
@@ -395,10 +395,10 @@ function JetBlock_df!(d::AbstractArray, m::AbstractArray; jets, dom, rng, kwargs
         for iblkcol = 1:size(jets, 2)
             _m = getblock(m, iblkcol)
             if !iszero(jets[iblkrow,iblkcol])
-                if size(jets, 2) == 1
-                    df!(_d, jets[iblkrow,iblkcol], _m; mₒ = point(jets[iblkrow,iblkcol]), state(jets[iblkrow,iblkcol])...)
-                else
+                if size(jets, 2) > 1
                     _d .+= df!(dtmp, jets[iblkrow,iblkcol], _m; mₒ = point(jets[iblkrow,iblkcol]), state(jets[iblkrow,iblkcol])...)
+                else
+                    df!(_d, jets[iblkrow,iblkcol], _m; mₒ = point(jets[iblkrow,iblkcol]), state(jets[iblkrow,iblkcol])...)
                 end
             end
         end
@@ -419,10 +419,10 @@ function JetBlock_df′!(m::AbstractArray, d::AbstractArray; jets, dom, rng, kwa
         for iblkrow = 1:size(jets, 1)
             _d = getblock(d, iblkrow)
             if !iszero(jets[iblkrow,iblkcol])
-                if size(jets, 1) == 1
-                    df′!(_m, jets[iblkrow,iblkcol], _d; mₒ=point(jets[iblkrow,iblkcol]), state(jets[iblkrow,iblkcol])...)
-                else
+                if size(jets, 1) > 1
                     _m .+= df′!(mtmp, jets[iblkrow,iblkcol], _d; mₒ=point(jets[iblkrow,iblkcol]), state(jets[iblkrow,iblkcol])...)
+                else
+                    df′!(_m, jets[iblkrow,iblkcol], _d; mₒ=point(jets[iblkrow,iblkcol]), state(jets[iblkrow,iblkcol])...)
                 end
             end
         end
