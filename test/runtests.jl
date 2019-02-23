@@ -314,6 +314,11 @@ end
             @test y.arrays[i][j] ≈ a*u.arrays[i][j] + b*v.arrays[i][j] + c*w.arrays[i][j]
         end
     end
+
+    z = zeros(12)
+    z .= x
+    @test typeof(z) == Array{Float64,1}
+    @test z ≈ x
 end
 
 @testset "block operator" begin
@@ -378,9 +383,6 @@ end
 
     @test eltype(L) == Float64
     K = convert(Array, L)
-
-    L*δm
-    K*δm
 
     @test L*δm ≈ K*δm
 end

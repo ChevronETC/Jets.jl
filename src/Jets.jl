@@ -275,20 +275,29 @@ end
 
 Base.similar(A::BlockArray) = BlockArray([similar(A.arrays[i]) for i=1:length(A.arrays)], A.indices)
 
-# minimal broadcasting logic for BlockArray --<
+# BlockArray broadcasting implementation --<
 struct BlockArrayStyle <: Broadcast.AbstractArrayStyle{1} end
 Base.BroadcastStyle(::Type{<:BlockArray}) = BlockArrayStyle()
 BlockArrayStyle(::Val{1}) = BlockArrayStyle()
 
-function Base.similar(bc::Broadcast.Broadcasted{BlockArrayStyle}, ::Type{T}) where {T}
-    A = find_blockarray(bc)
-    BlockArray([similar(A.arrays[i]) for i=1:length(A.arrays)], copy(A.indices))
-end
+Base.similar(bc::Broadcast.Broadcasted{BlockArrayStyle}, ::Type{T}) where {T} = similar(find_blockarray(bc)::BlockArray{T})
 find_blockarray(bc::Broadcast.Broadcasted) = find_blockarray(bc.args)
 find_blockarray(args::Tuple) = find_blockarray(find_blockarray(args[1]), Base.tail(args))
 find_blockarray(x) = x
 find_blockarray(a::BlockArray, rest) = a
 find_blockarray(::Any, rest) = find_blockarray(rest)
+
+getblock(bc::Broadcast.Broadcasted, ::Type{S}, iblock, indices) where {S} = Broadcast.Broadcasted{S}(bc.f, map(arg->getblock(arg, S, iblock, indices), bc.args))
+getblock(A::BlockArray, ::Type{<:Any}, iblock, indices) = getblock(A, iblock)
+getblock(A::AbstractArray, ::Type{<:Any}, iblock, indices) = A[indices]
+
+function Base.copyto!(dest::BlockArray{T,<:AbstractArray{T,N}}, bc::Broadcast.Broadcasted{BlockArrayStyle}) where {T,N}
+    S = Broadcast.DefaultArrayStyle{N}
+    for iblock = 1:nblocks(dest)
+        copyto!(getblock(dest, iblock), getblock(bc, S, iblock, dest.indices[iblock]))
+    end
+    dest
+end
 # -->
 
 LinearAlgebra.norm(x::BlockArray, p::Real=2) = mapreduce(_x->norm(_x,p)^p, +, x.arrays)^(1/p)
