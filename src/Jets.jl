@@ -318,6 +318,7 @@ find_blockarray(::Any, rest) = find_blockarray(rest)
 getblock(bc::Broadcast.Broadcasted, ::Type{S}, iblock, indices) where {S} = Broadcast.Broadcasted{S}(bc.f, map(arg->getblock(arg, S, iblock, indices), bc.args))
 getblock(A::BlockArray, ::Type{<:Any}, iblock, indices) = getblock(A, iblock)
 getblock(A::AbstractArray, ::Type{<:Any}, iblock, indices) = A[indices]
+getblock(A, ::Type{<:Any}, iblock, indices) = A
 
 function Base.copyto!(dest::BlockArray{T,<:AbstractArray{T,N}}, bc::Broadcast.Broadcasted{BlockArrayStyle}) where {T,N}
     S = Broadcast.DefaultArrayStyle{N}
