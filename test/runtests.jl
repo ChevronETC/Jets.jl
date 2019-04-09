@@ -224,7 +224,7 @@ end
     d = F₄₃₂₁ * m
     @test d ≈ F₄ * ( F₃ * ( F₂ * ( F₁ * m)))
 
-    m = rand(10)
+    m = ones(10)
     J₁ = jacobian(F₁, m)
     J₂₁ = jacobian(F₂, F₁*m) ∘ J₁
     J₃₂₁ = jacobian(F₃, (F₂ ∘ F₁) * m) ∘ jacobian(F₂, F₁ * m) ∘ J₁
@@ -235,33 +235,36 @@ end
     L₃₂₁ = jacobian(F₃₂₁, m)
     L₄₃₂₁ = jacobian(F₄₃₂₁, m)
 
-    δm = rand(10)
+    δm = ones(10)
     @test J₁ * δm ≈ L₁ * δm
     @test J₂₁ * δm ≈ L₂₁ * δm
     @test J₃₂₁ * δm ≈ L₃₂₁ * δm
     @test J₄₃₂₁ * δm ≈ L₄₃₂₁ * δm
+
+    δd = J₄₃₂₁*δm
+    @test J₄₃₂₁'*δd ≈ L₄₃₂₁'*δd
 end
 
-@testset "composition, linear+nonlinear" begin
-    d₁,d₄ = map(i->rand(10), 1:2)
-    A₂,A₄ = map(d->JopFoo(d), (d₁,d₄))
+@testset "composition, linear+nonlinear, adjoints" begin
+    A₂ = JopBaz(rand(10,10))
+    A₄ = JopFoo(rand(10))
     F₁,F₃ = map(i->JopBar(10), 1:2)
-    F₂₁ = A₂ ∘ F₁
-    F₃₂₁ = F₃ ∘ A₂ ∘ F₁
-    F₄₃₂₁ = A₄ ∘ F₃ ∘ A₂ ∘ F₁
+    F₂₁ = A₂' ∘ F₁
+    F₃₂₁ = F₃ ∘ A₂' ∘ F₁
+    F₄₃₂₁ = A₄ ∘ F₃ ∘ A₂' ∘ F₁
     m = rand(domain(F₁))
     d = F₂₁ * m
-    @test d ≈ A₂*(F₁*m)
+    @test d ≈ A₂'*(F₁*m)
     d = F₃₂₁*m
-    @test d ≈ F₃*( A₂ * ( F₁ * m))
+    @test d ≈ F₃*( A₂' * ( F₁ * m))
     d = F₄₃₂₁ * m
-    @test d ≈ A₄ * ( F₃ * ( A₂ * ( F₁ * m)))
+    @test d ≈ A₄ * ( F₃ * ( A₂' * ( F₁ * m)))
 
     m = rand(10)
     J₁ = jacobian(F₁, m)
-    J₂₁ = A₂ ∘ jacobian(F₁, m)
-    J₃₂₁ = jacobian(F₃, A₂*(F₁*m)) ∘ A₂ ∘ jacobian(F₁, m)
-    J₄₃₂₁ = A₄ ∘ jacobian(F₃, A₂*(F₁*m)) ∘ A₂ ∘ jacobian(F₁, m)
+    J₂₁ = A₂' ∘ jacobian(F₁, m)
+    J₃₂₁ = jacobian(F₃, A₂'*(F₁*m)) ∘ A₂' ∘ jacobian(F₁, m)
+    J₄₃₂₁ = A₄ ∘ jacobian(F₃, A₂'*(F₁*m)) ∘ A₂' ∘ jacobian(F₁, m)
 
     L₁ = jacobian(F₁, m)
     L₂₁ = jacobian(F₂₁, m)
@@ -325,7 +328,8 @@ end
 
 @testset "block operator" begin
     B₁₁,B₁₃,B₁₄,B₂₁,B₂₃,B₂₄,B₃₂,B₃₃ = map(i->rand(10,10), 1:8)
-    A₁₁,A₁₃,A₁₄,A₂₁,A₂₃,A₂₄,A₃₂,A₃₃ = map(B->JopBaz(B), (B₁₁,B₁₃,B₁₄,B₂₁,B₂₃,B₂₄,B₃₂,B₃₃))
+    A₁₁,A₁₃,A₁₄,A₂₁,A₂₃,A₃₂,A₃₃ = map(B->JopBaz(B), (B₁₁,B₁₃,B₁₄,B₂₁,B₂₃,B₃₂,B₃₃))
+    A₂₄ = (JopBaz(B₂₄))'
     F₁₂,F₂₃,F₃₁ = map(i->JopBar(10), 1:3)
     Z₂₂,Z₃₄ = map(i->JopZeroBlock(JetSpace(Float64,10), JetSpace(Float64,10)), 1:2)
 

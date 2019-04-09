@@ -88,9 +88,14 @@ end
 JopLn(jet::Jet, mₒ::AbstractArray) = JopLn(point!(jet, mₒ))
 JopLn(;kwargs...) = JopLn(Jet(;kwargs...))
 
+JopLn(A::JopLn) = A
+JopLn(F::JopNl) = JopLn(jet(F))
+
 struct JopAdjoint{J<:Jet,T<:Jop{J}} <: Jop{J}
     op::T
 end
+
+JopLn(A::JopAdjoint) = A
 
 domain(jet::Jet) = jet.dom
 Base.range(jet::Jet) = jet.rng
@@ -213,43 +218,42 @@ Base.Array(R::JetSSpace{T,N,F}) where {T,N,F} = SymmetricArray{T,N,F}(Array{T,N}
 #
 # composition
 #
-JetComposite(jets) = Jet(f! = JetComposite_f!, df! = JetComposite_df!, df′! = JetComposite_df′!, dom = domain(jets[end]), rng = range(jets[1]), s = (jets=jets,))
+JetComposite(ops) = Jet(f! = JetComposite_f!, df! = JetComposite_df!, df′! = JetComposite_df′!, dom = domain(ops[end]), rng = range(ops[1]), s = (ops=ops,))
 
-function JetComposite_f!(d::T, m; jets, kwargs...) where {T<:AbstractArray}
-    g = mapreduce(i->(_m->f!(zeros(range(jets[i])), jets[i], _m; state(jets[i])...)), ∘, 1:length(jets))
+function JetComposite_f!(d::T, m; ops, kwargs...) where {T<:AbstractArray}
+    g = mapreduce(i->(_m->mul!(zeros(range(ops[i])), ops[i], _m)), ∘, 1:length(ops))
     d .= g(m)
     d::T
 end
 
-function JetComposite_df!(d::T, m; jets, kwargs...) where {T<:AbstractArray}
-    dg = mapreduce(i->(_m->df!(zeros(range(jets[i])), jets[i], _m; mₒ = point(jets[i]), state(jets[i])...)), ∘, 1:length(jets))
+function JetComposite_df!(d::T, m; ops, kwargs...) where {T<:AbstractArray}
+    dg = mapreduce(i->(_m->mul!(zeros(range(JopLn(ops[i]))), JopLn(ops[i]), _m)), ∘, 1:length(ops))
     d .= dg(m)
     d::T
 end
 
-function JetComposite_df′!(m::T, d; jets, kwargs...) where {T<:AbstractArray}
-    dg′ = mapreduce(i->(_d->df′!(zeros(domain(jets[i])), jets[i], _d; mₒ = point(jets[i]), state(jets[i])...)), ∘, length(jets):-1:1)
+function JetComposite_df′!(m::T, d; ops, kwargs...) where {T<:AbstractArray}
+    dg′ = mapreduce(i->(_d->mul!(zeros(domain(JopLn(ops[i]))), (JopLn(ops[i]))', _d)), ∘, length(ops):-1:1)
     m .= dg′(d)
     m::T
 end
 
-jets(jet::Jet) = (jet,)
-jets(jet::Jet{D,R,typeof(JetComposite_f!)}) where {D,R} = state(jet).jets
-Base.:∘(jet₂::Jet, jet₁::Jet) = JetComposite((jets(jet₂)..., jets(jet₁)...))
-Base.:∘(A₂::Jop, A₁::Jop) = JopNl(jet(A₂) ∘ jet(A₁))
-Base.:∘(A₂::JopLn, A₁::JopLn) = JopLn(jet(A₂) ∘ jet(A₁))
+jops(op::Jop{J}) where {D,R,J<:Jet{D,R,typeof(JetComposite_f!)}} = state(jet(op)).ops
+jops(op::Jop) = (op,)
+Base.:∘(A₂::Union{JopAdjoint,JopLn}, A₁::Union{JopAdjoint,JopLn}) = JopLn(JetComposite((jops(A₂)..., jops(A₁)...)))
+Base.:∘(A₂::Jop, A₁::Jop) = JopNl(JetComposite((jops(A₂)..., jops(A₁)...)))
 
-function point!(jet::Jet{D,R,typeof(JetComposite_f!)}, mₒ::AbstractArray) where {D<:JetAbstractSpace,R<:JetAbstractSpace}
-    jet.mₒ = mₒ
-    jets = state(jet).jets
+function point!(j::Jet{D,R,typeof(JetComposite_f!)}, mₒ::AbstractArray) where {D<:JetAbstractSpace,R<:JetAbstractSpace}
+    j.mₒ = mₒ
+    ops = state(j).ops
     _m = copy(mₒ)
-    for i = 1:length(jets)
-        point!(jets[i], _m)
-        if i < length(jets)
-            _m = f!(zeros(range(jets[i])), jets[i], _m; mₒ = point(jets[i]), state(jets[i])...)
+    for i = 1:length(ops)
+        point!(jet(ops[i]), _m)
+        if i < length(ops)
+            _m = mul!(zeros(range(ops[i])), ops[i], _m)
         end
     end
-    jet
+    j
 end
 
 #
@@ -361,14 +365,14 @@ for f in (:Array, :ones, :rand, :zeros)
     @eval (Base.$f)(R::JetBSpace{T,S}) where {T,S<:JetAbstractSpace} = BlockArray([($f)(space(R, i)) for i=1:length(R.spaces)], R.indices)
 end
 
-function JetBlock(jets::AbstractMatrix{T}) where {T<:Jet}
-    dom = JetBSpace([domain(jets[1,i]) for i=1:size(jets,2)])
-    rng = JetBSpace([range(jets[i,1]) for i=1:size(jets,1)])
-    Jet(f! = JetBlock_f!, df! = JetBlock_df!, df′! = JetBlock_df′!, dom = dom, rng = rng, s = (jets=jets,dom=dom,rng=rng))
+function JetBlock(ops::AbstractMatrix{T}) where {T<:Jop}
+    dom = JetBSpace([domain(ops[1,i]) for i=1:size(ops,2)])
+    rng = JetBSpace([range(ops[i,1]) for i=1:size(ops,1)])
+    Jet(f! = JetBlock_f!, df! = JetBlock_df!, df′! = JetBlock_df′!, dom = dom, rng = rng, s = (ops=ops,dom=dom,rng=rng))
 end
-JetBlock(jets::AbstractVector{T}) where {T<:Jet} = JetBlock(reshape(jets, length(jets), 1))
-JopBlock(ops::AbstractArray{T}) where {T<:JopLn} = JopLn(JetBlock(jet.(ops)))
-JopBlock(ops::AbstractArray{T}) where {T<:Jop} = JopNl(JetBlock(jet.(ops)))
+JopBlock(ops::AbstractMatrix{T}) where {T<:Union{JopLn,JopAdjoint}} = JopLn(JetBlock(ops))
+JopBlock(ops::AbstractMatrix{T}) where {T<:Jop} = JopNl(JetBlock(ops))
+JopBlock(ops::AbstractVector{T}) where {T<:Jop} = JopBlock(reshape(jets, length(jets), 1))
 
 JopZeroBlock(dom::JetSpace, rng::JetSpace) = JopLn(df! = JopZeroBlock_df!, dom = dom, rng = rng)
 JopZeroBlock_df!(d, m; kwargs...) = d .= 0
@@ -381,45 +385,45 @@ macro blockop(ex)
     :(JopBlock($(esc(ex))))
 end
 
-function JetBlock_f!(d::AbstractArray, m::AbstractArray; jets, dom, rng, kwargs...)
+function JetBlock_f!(d::AbstractArray, m::AbstractArray; ops, dom, rng, kwargs...)
     local dtmp
-    if size(jets, 2) > 1
-        dtmp = zeros(range(jets[1,1]))
+    if size(ops, 2) > 1
+        dtmp = zeros(range(ops[1,1]))
     end
-    for iblkrow = 1:size(jets, 1)
+    for iblkrow = 1:size(ops, 1)
         _d = getblock(d, iblkrow)
-        if size(jets, 2) > 1
-            dtmp = length(dtmp) == length(range(jets[iblkrow,1])) ? reshape(dtmp, range(jets[iblkrow,1])) : zeros(range(jets[iblkrow,1]))
+        if size(ops, 2) > 1
+            dtmp = length(dtmp) == length(range(ops[iblkrow,1])) ? reshape(dtmp, range(ops[iblkrow,1])) : zeros(range(ops[iblkrow,1]))
         end
-        for iblkcol = 1:size(jets, 2)
+        for iblkcol = 1:size(ops, 2)
             _m = getblock(m, iblkcol)
-            if size(jets, 2) > 1
-                _d .+= f!(dtmp, jets[iblkrow,iblkcol], _m; state(jets[iblkrow,iblkcol])...)
+            if size(ops, 2) > 1
+                _d .+= mul!(dtmp, ops[iblkrow,iblkcol], _m)
             else
-                f!(_d, jets[iblkrow,iblkcol], m; state(jets[iblkrow,iblkcol])...)
+                mul!(_d, ops[iblkrow,iblkcol], m)
             end
         end
     end
     d
 end
 
-function JetBlock_df!(d::AbstractArray, m::AbstractArray; jets, dom, rng, kwargs...)
+function JetBlock_df!(d::AbstractArray, m::AbstractArray; ops, dom, rng, kwargs...)
     local dtmp
-    if size(jets, 2) > 1
-        dtmp = zeros(range(jets[1,1]))
+    if size(ops, 2) > 1
+        dtmp = zeros(range(ops[1,1]))
     end
-    for iblkrow = 1:size(jets, 1)
+    for iblkrow = 1:size(ops, 1)
         _d = getblock(d, iblkrow)
-        if size(jets, 2) > 1
-            dtmp = length(dtmp) == length(range(jets[iblkrow,1])) ? reshape(dtmp, range(jets[iblkrow,1])) : zeros(range(jets[iblkrow,1]))
+        if size(ops, 2) > 1
+            dtmp = length(dtmp) == length(range(ops[iblkrow,1])) ? reshape(dtmp, range(ops[iblkrow,1])) : zeros(range(ops[iblkrow,1]))
         end
-        for iblkcol = 1:size(jets, 2)
+        for iblkcol = 1:size(ops, 2)
             _m = getblock(m, iblkcol)
-            if !iszero(jets[iblkrow,iblkcol])
-                if size(jets, 2) > 1
-                    _d .+= df!(dtmp, jets[iblkrow,iblkcol], _m; mₒ = point(jets[iblkrow,iblkcol]), state(jets[iblkrow,iblkcol])...)
+            if !iszero(ops[iblkrow,iblkcol])
+                if size(ops, 2) > 1
+                    _d .+= mul!(dtmp, JopLn(ops[iblkrow,iblkcol]), _m)
                 else
-                    df!(_d, jets[iblkrow,iblkcol], _m; mₒ = point(jets[iblkrow,iblkcol]), state(jets[iblkrow,iblkcol])...)
+                    mul!(_d, JopLn(ops[iblkrow,iblkcol]), _m)
                 end
             end
         end
@@ -427,23 +431,23 @@ function JetBlock_df!(d::AbstractArray, m::AbstractArray; jets, dom, rng, kwargs
     d
 end
 
-function JetBlock_df′!(m::AbstractArray, d::AbstractArray; jets, dom, rng, kwargs...)
+function JetBlock_df′!(m::AbstractArray, d::AbstractArray; ops, dom, rng, kwargs...)
     local mtmp
-    if size(jets, 1) > 1
-        mtmp = zeros(domain(jets[1,1]))
+    if size(ops, 1) > 1
+        mtmp = zeros(domain(ops[1,1]))
     end
-    for iblkcol = 1:size(jets, 2)
+    for iblkcol = 1:size(ops, 2)
         _m = getblock(m, iblkcol)
-        if size(jets, 1) > 1
-            mtmp = length(mtmp) == length(domain(jets[1,iblkcol])) ? reshape(mtmp, domain(jets[1,iblkcol])) : zeros(domain(jets[1,iblkcol]))
+        if size(ops, 1) > 1
+            mtmp = length(mtmp) == length(domain(ops[1,iblkcol])) ? reshape(mtmp, domain(ops[1,iblkcol])) : zeros(domain(ops[1,iblkcol]))
         end
-        for iblkrow = 1:size(jets, 1)
+        for iblkrow = 1:size(ops, 1)
             _d = getblock(d, iblkrow)
-            if !iszero(jets[iblkrow,iblkcol])
-                if size(jets, 1) > 1
-                    _m .+= df′!(mtmp, jets[iblkrow,iblkcol], _d; mₒ=point(jets[iblkrow,iblkcol]), state(jets[iblkrow,iblkcol])...)
+            if !iszero(ops[iblkrow,iblkcol])
+                if size(ops, 1) > 1
+                    _m .+= mul!(mtmp, (JopLn(ops[iblkrow,iblkcol]))', _d)
                 else
-                    df′!(_m, jets[iblkrow,iblkcol], _d; mₒ=point(jets[iblkrow,iblkcol]), state(jets[iblkrow,iblkcol])...)
+                    mul!(_m, (JopLn(ops[iblkrow,iblkcol]))', _d)
                 end
             end
         end
@@ -451,24 +455,25 @@ function JetBlock_df′!(m::AbstractArray, d::AbstractArray; jets, dom, rng, kwa
     m
 end
 
-function point!(jet::Jet{D,R,typeof(JetBlock_f!)}, mₒ::AbstractArray) where {D<:JetAbstractSpace,R<:JetAbstractSpace}
-    jets = state(jet).jets
-    dom = domain(jet)
-    for icol = 1:size(jets, 2), irow = 1:size(jets, 1)
-        point!(jets[irow,icol], getblock(mₒ, icol))
+function point!(j::Jet{D,R,typeof(JetBlock_f!)}, mₒ::AbstractArray) where {D<:JetAbstractSpace,R<:JetAbstractSpace}
+    ops = state(j).ops
+    dom = domain(j)
+    for icol = 1:size(ops, 2), irow = 1:size(ops, 1)
+        point!(jet(ops[irow,icol]), getblock(mₒ, icol))
     end
-    jet
+    j
 end
 
-nblocks(jet::Jet{D,R,typeof(JetBlock_f!)}) where {D<:JetAbstractSpace,R<:JetAbstractSpace}= size(state(jet).jets)
-nblocks(jet::Jet{D,R,typeof(JetBlock_f!)}, i) where {D<:JetAbstractSpace,R<:JetAbstractSpace} = size(state(jet).jets, i)
+nblocks(jet::Jet{D,R,typeof(JetBlock_f!)}) where {D<:JetAbstractSpace,R<:JetAbstractSpace}= size(state(jet).ops)
+nblocks(jet::Jet{D,R,typeof(JetBlock_f!)}, i) where {D<:JetAbstractSpace,R<:JetAbstractSpace} = size(state(jet).ops, i)
 nblocks(A::Jop{T}) where {T<:Jet{<:JetAbstractSpace,<:JetAbstractSpace,typeof(JetBlock_f!)}} = nblocks(jet(A))
 nblocks(A::Jop{T}, i) where {T<:Jet{<:JetAbstractSpace,<:JetAbstractSpace,typeof(JetBlock_f!)}} = nblocks(jet(A), i)
 
-getblock(jet::Jet{D,R,typeof(JetBlock_f!)}, i, j) where {D,R} = state(jet).jets[i,j]
-getblock(A::JopLn{T}, i, j) where {T<:Jet{<:JetAbstractSpace,<:JetAbstractSpace,typeof(JetBlock_f!)}} = JopLn(getblock(jet(A), i, j))
-getblock(::Type{JopNl}, A::Jop{T}, i, j) where {T<:Jet{<:JetAbstractSpace,<:JetAbstractSpace,typeof(JetBlock_f!)}} = JopNl(getblock(jet(A), i, j))
-getblock(::Type{JopLn}, A::Jop{T}, i, j) where {T<:Jet{<:JetAbstractSpace,<:JetAbstractSpace,typeof(JetBlock_f!)}} = JopLn(getblock(jet(A), i, j))
+getblock(jet::Jet{D,R,typeof(JetBlock_f!)}, i, j) where {D,R} = state(jet).ops[i,j]
+getblock(A::JopLn{T}, i, j) where {T<:Jet{<:JetAbstractSpace,<:JetAbstractSpace,typeof(JetBlock_f!)}} = getblock(jet(A), i, j)::JopLn
+getblock(A::JopNl{T}, i, j) where {T<:Jet{<:JetAbstractSpace,<:JetAbstractSpace,typeof(JetBlock_f!)}} = getblock(jet(A), i, j)
+getblock(::Type{JopNl}, A::Jop{T}, i, j) where {T<:Jet{<:JetAbstractSpace,<:JetAbstractSpace,typeof(JetBlock_f!)}} = getblock(jet(A), i, j)::JopNl
+getblock(::Type{JopLn}, A::Jop{T}, i, j) where {T<:Jet{<:JetAbstractSpace,<:JetAbstractSpace,typeof(JetBlock_f!)}} = getblock(jet(A), i, j)::JopLn
 getblock(A::JopAdjoint{Jet{D,R,typeof(JetBlock_f!)}}, i, j) where {D,R} = JopAdjoint(getindex(A.op, j, i))
 
 #
