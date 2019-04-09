@@ -155,6 +155,7 @@ Base.size(R::JetSSpace) = R.n
 Base.eltype(R::Type{JetSSpace{T,N,F}}) where {T,N,F} = T
 Base.eltype(R::Type{JetSSpace{T,N}}) where {T,N} = T
 Base.eltype(R::Type{JetSSpace{T}}) where {T} = T
+symspace() = nothing
 
 struct SymmetricArray{T,N,F<:Function} <: AbstractArray{T,N}
     A::Array{T,N}
@@ -162,11 +163,30 @@ struct SymmetricArray{T,N,F<:Function} <: AbstractArray{T,N}
     map::F
 end
 
+Base.parent(A::SymmetricArray) = A.A
+
 # SymmetricArray array interface implementation <--
 Base.IndexStyle(::Type{T}) where {T<:SymmetricArray} = IndexCartesian()
 Base.size(A::SymmetricArray) = A.n
-Base.getindex(A::SymmetricArray{T,N}, I::Vararg{Int,N}) where {T,N} = A.A[A.map(I)]
-Base.setindex!(A::SymmetricArray{T,N}, v, I::Vararg{Int,N}) where {T,N} = A.A[A.map(I)] = v
+
+function Base.getindex(A::SymmetricArray{T}, I::Vararg{Int}) where {T}
+    for idim = 1:ndims(A)
+        if I[idim] > size(A.A, idim)
+            return conj(A.A[A.map(I)])
+        end
+    end
+    A.A[CartesianIndex(I)]
+end
+
+function Base.setindex!(A::SymmetricArray{T}, v, I::Vararg{Int}) where {T}
+    for idim = 1:ndims(A)
+        if I[idim] > size(A.A, idim)
+            A.A[A.map(I)] = conj(v)
+            return A.A[A.map(I)]
+        end
+    end
+    A.A[CartesianIndex(I)] = v
+end
 # -->
 
 # SymmetricArray broadcasting interface implementation --<
@@ -174,7 +194,7 @@ Base.BroadcastStyle(::Type{<:SymmetricArray}) = Broadcast.ArrayStyle{SymmetricAr
 
 function Base.similar(bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{SymmetricArray}}, ::Type{T}) where {T}
     A = find_symmetricarray(bc)
-    SymmetricArray(similar(Array{T}, axes(bc)), A.n, A.map)
+    SymmetricArray(similar(A.A), A.n, A.map)
 end
 find_symmetricarray(bc::Broadcast.Broadcasted) = find_symmetricarray(bc.args)
 find_symmetricarray(args::Tuple) = find_symmetricarray(find_symmetricarray(args[1]), Base.tail(args))
@@ -495,6 +515,6 @@ end
 export Jet, JetAbstractSpace, JetSpace, Jop, JopLn, JopNl, JopZeroBlock,
     @blockop, domain, getblock, getblock!, dot_product_test, getblock,
     getblock!, indices, jacobian, jet, linearity_test, nblocks, point,
-    setblock!, shape, space, state, state!
+    setblock!, shape, space, state, state!, symspace
 
 end
