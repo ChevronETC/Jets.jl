@@ -24,6 +24,7 @@ Base.eltype(R::Type{JetAbstractSpace{T,N}}) where {T,N} = T
 Base.eltype(R::Type{JetAbstractSpace{T}}) where {T} = T
 Base.ndims(R::JetAbstractSpace{T,N}) where {T,N} = N
 Base.length(R::JetAbstractSpace) = prod(size(R))
+Base.size(R::JetAbstractSpace, i) = size(R)[i]
 Base.reshape(x::AbstractArray, R::JetAbstractSpace) = reshape(x, size(R))
 
 struct JetSpace{T,N} <: JetAbstractSpace{T,N}
@@ -101,7 +102,7 @@ domain(jet::Jet) = jet.dom
 Base.range(jet::Jet) = jet.rng
 Base.eltype(jet::Jet) = promote_type(eltype(domain(jet)), eltype(range(jet)))
 state(jet::Jet) = jet.s
-state!(jet, s) = jet.s = merge(jet.s, s)
+state!(jet, s) = begin jet.s = merge(jet.s, s); jet end
 point(jet::Jet) = jet.mₒ
 point!(jet::Jet, mₒ::AbstractArray) = begin jet.mₒ = mₒ; jet end
 
@@ -509,7 +510,36 @@ function dot_product_test(op::JopLn, m::AbstractArray, d::AbstractArray; mmask=[
     end
 end
 
-function linearity_test(A::JopLn)
+function linearization_test(F::JopNl, mₒ::AbstractArray;
+        μ=[1.0, 0.5, 0.25, 0.125, 0.0625, 0.03125], mask=[], seed=Inf)
+    mask = length(mask) == 0 ? ones(domain(F)) : mask
+
+    isfinite(seed) && Random.seed!(seed)
+    δm = mask .* (-1 .+ 2 .* rand(domain(F)))
+    δm ./= maximum(abs, δm)
+
+    Fₒ = F*mₒ
+    Jₒ = jacobian(F, mₒ)
+    Jₒδm = Jₒ*δm
+
+    μ = convert(Array{eltype(mₒ)}, sort(μ, rev=true))
+
+    μobs = zeros(length(μ)-1)
+    μexp = zeros(length(μ)-1)
+    ϕ = zeros(length(μ))
+    for i = 1:length(μ)
+        d_lin  = Fₒ .+ μ[i] .* Jₒδm
+        d_non  = F*(mₒ .+ μ[i] .* δm)
+        ϕ[i] = norm(d_non .- d_lin)
+        if i>1
+            μobs[i-1] = ϕ[i-1]/ϕ[i]
+            μexp[i-1] = (μ[i-1]/μ[i]).^2
+        end
+    end
+    μobs, μexp
+end
+
+function linearity_test(A::Union{JopLn,JopAdjoint})
     m1 = -1 .+ 2 * rand(domain(A))
     m2 = -1 .+ 2 * rand(range(A))
     lhs = A*(m1 + m2)
@@ -519,7 +549,7 @@ end
 
 export Jet, JetAbstractSpace, JetSpace, Jop, JopLn, JopNl, JopZeroBlock,
     @blockop, domain, getblock, getblock!, dot_product_test, getblock,
-    getblock!, indices, jacobian, jet, linearity_test, nblocks, point,
-    setblock!, shape, space, state, state!, symspace
+    getblock!, indices, jacobian, jet, linearity_test, linearization_test,
+    nblocks, point, setblock!, shape, space, state, state!, symspace
 
 end
