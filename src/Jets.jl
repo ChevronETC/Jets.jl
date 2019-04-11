@@ -44,12 +44,13 @@ Base.Array(R::JetSpace{T,N}) where {T,N} = Array{T,N}(undef, size(R))
 
 jet_missing(m) = error("not implemented")
 
-mutable struct Jet{D<:JetAbstractSpace,R<:JetAbstractSpace,F<:Function,DF<:Function,DF′<:Function,M<:AbstractArray,S<:NamedTuple}
+mutable struct Jet{D<:JetAbstractSpace,R<:JetAbstractSpace,F<:Function,DF<:Function,DF′<:Function,U<:Function,M<:AbstractArray,S<:NamedTuple}
     dom::D
     rng::R
     f!::F
     df!::DF
     df′!::DF′
+    upstate!::U
     mₒ::M
     s::S
 end
@@ -59,6 +60,7 @@ function Jet(;
         f! = jet_missing,
         df! = jet_missing,
         df′! = jet_missing,
+        upstate! = (m,s) -> nothing,
         s = NamedTuple())
     if isa(f!, typeof(jet_missing)) && isa(df!, typeof(jet_missing))
         error("must set at-least one of f! and df!")
@@ -69,7 +71,7 @@ function Jet(;
     if isa(df′!, typeof(jet_missing))
         df′! = df!
     end
-    Jet(dom, rng, f!, df!, df′!, Array{eltype(dom)}(undef, ntuple(i->0,ndims(dom))), s)
+    Jet(dom, rng, f!, df!, df′!, upstate!, Array{eltype(dom)}(undef, ntuple(i->0,ndims(dom))), s)
 end
 
 f!(d, jet::Jet, m; kwargs...) = jet.f!(d, m; kwargs...)
@@ -104,7 +106,12 @@ Base.eltype(jet::Jet) = promote_type(eltype(domain(jet)), eltype(range(jet)))
 state(jet::Jet) = jet.s
 state!(jet, s) = begin jet.s = merge(jet.s, s); jet end
 point(jet::Jet) = jet.mₒ
-point!(jet::Jet, mₒ::AbstractArray) = begin jet.mₒ = mₒ; jet end
+
+function point!(jet::Jet, mₒ::AbstractArray)
+    jet.mₒ = mₒ
+    jet.upstate!(mₒ, state(jet))
+    jet
+end
 
 jet(A::Jop) = A.jet
 jet(A::JopAdjoint) = jet(A.op)

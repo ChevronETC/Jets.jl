@@ -21,6 +21,17 @@ function JopBaz(A)
     JopLn(;df! = JopBaz_df!, df′! = JopBaz_df′!, dom = dom, rng = rng, s = (A=A,))
 end
 
+JopRosenbrock_f!(d,m;kwargs...) = d.= [1-m[1], 10*(m[2]-m[1]^2)]
+JopRosenbrock_df!(d,m;J,kwargs...) = d .= J*m
+JopRosenbrock_df′!(m,d;J,kwargs...) = m .= J'*d
+JopRosenbrock_upstate!(m,s) = s.J[2,1] = -20.0*m[1]
+function JopRosenbrock()
+    dom = JetSpace(Float64, 2)
+    rng = JetSpace(Float64, 2)
+    JopNl(f! = JopRosenbrock_f!, df! = JopRosenbrock_df!, df′! = JopRosenbrock_df′!,
+        upstate! = JopRosenbrock_upstate!, dom = dom, rng = rng, s = (J=[-1.0 0.0;0.0 10.0],))
+end
+
 @testset "JetSpace, construction, n=$n, T=$T" for n in ((2,),(2,3),(2,3,4)), T in (Float32,Float64,Complex{Float32},Complex{Float64})
     N = length(n)
     R = JetSpace(T, n...)
@@ -126,6 +137,13 @@ end
     @test shape(F,2) == (10,)
     @test domain(F) == JetSpace(Float64,10)
     @test range(F) == JetSpace(Float64,10)
+end
+
+@testset "upstate" begin
+    F = JopRosenbrock()
+    m = rand(2)
+    J = jacobian(F, m)
+    @test state(J).J ≈ [-1.0 0.0;-20*m[1] 10.0]
 end
 
 function indexmap(I)
