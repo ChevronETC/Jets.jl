@@ -15,7 +15,7 @@ TODO...
 
 module Jets
 
-using LinearAlgebra
+using CRC32c, LinearAlgebra
 
 abstract type JetAbstractSpace{T,N} end
 
@@ -153,6 +153,10 @@ LinearAlgebra.mul!(d::AbstractArray, A::JopLn, m::AbstractArray) = df!(d, jet(A)
 LinearAlgebra.mul!(m::AbstractArray, A::JopAdjoint{J,T}, d::AbstractArray) where {J<:Jet,T<:JopLn} = df′!(m, jet(A), d; mₒ=point(A), state(A)...)
 
 Base.:*(A::Jop, m::AbstractArray) = mul!(zeros(range(A)), A, m)
+
+Base.show(io::IO, A::JopLn) = show(io, "Jet linear operator, $(size(domain(A))) → $(size(range(A)))")
+Base.show(io::IO, A::JopAdjoint) = show(io, "Jet adjoint operator, $(size(domain(A))) → $(size(range(A)))")
+Base.show(io::IO, F::JopNl) = show(io, "Jet nonlinear operator, $(size(domain(F))) → $(size(range(F)))")
 
 #
 # Symmetric spaces / arrays
@@ -548,11 +552,15 @@ end
 
 function linearity_test(A::Union{JopLn,JopAdjoint})
     m1 = -1 .+ 2 * rand(domain(A))
-    m2 = -1 .+ 2 * rand(range(A))
+    m2 = -1 .+ 2 * rand(domain(A))
     lhs = A*(m1 + m2)
     rhs = A*m1 + A*m2
     lhs, rhs
 end
+
+# for hashing models <--
+CRC32c.crc32c(m::Array{<:Union{UInt32,Float32,Float64,Complex{Float32},Complex{Float64}}}) = CRC32c.crc32c(unsafe_wrap(Array, convert(Ptr{UInt8}, pointer(m)), length(m)*sizeof(eltype(m)), own=false))
+#-->
 
 export Jet, JetAbstractSpace, JetSpace, Jop, JopLn, JopNl, JopZeroBlock,
     @blockop, domain, getblock, getblock!, dot_product_test, getblock,
