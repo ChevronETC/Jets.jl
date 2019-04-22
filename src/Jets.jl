@@ -384,7 +384,7 @@ function JetBlock(ops::AbstractMatrix{T}) where {T<:Jop}
 end
 JopBlock(ops::AbstractMatrix{T}) where {T<:Union{JopLn,JopAdjoint}} = JopLn(JetBlock(ops))
 JopBlock(ops::AbstractMatrix{T}) where {T<:Jop} = JopNl(JetBlock(ops))
-JopBlock(ops::AbstractVector{T}) where {T<:Jop} = JopBlock(reshape(jets, length(jets), 1))
+JopBlock(ops::AbstractVector{T}) where {T<:Jop} = JopBlock(reshape(ops, length(ops), 1))
 
 JopZeroBlock(dom::JetSpace, rng::JetSpace) = JopLn(df! = JopZeroBlock_df!, dom = dom, rng = rng)
 JopZeroBlock_df!(d, m; kwargs...) = d .= 0
@@ -522,11 +522,12 @@ function dot_product_test(op::JopLn, m::AbstractArray, d::AbstractArray; mmask=[
 end
 
 function linearization_test(F::JopNl, mₒ::AbstractArray;
-        μ=[1.0, 0.5, 0.25, 0.125, 0.0625, 0.03125], mask=[], seed=Inf)
-    mask = length(mask) == 0 ? ones(domain(F)) : mask
+        μ=[1.0, 0.5, 0.25, 0.125, 0.0625, 0.03125], mmask=[], dmask = [], seed=Inf)
+    mmask = length(mmask) == 0 ? ones(domain(F)) : mmask
+    dmask = length(dmask) == 0 ? ones(range(F)) : dmask
 
     isfinite(seed) && Random.seed!(seed)
-    δm = mask .* (-1 .+ 2 .* rand(domain(F)))
+    δm = mmask .* (-1 .+ 2 .* rand(domain(F)))
     δm ./= maximum(abs, δm)
 
     Fₒ = F*mₒ
@@ -541,7 +542,7 @@ function linearization_test(F::JopNl, mₒ::AbstractArray;
     for i = 1:length(μ)
         d_lin  = Fₒ .+ μ[i] .* Jₒδm
         d_non  = F*(mₒ .+ μ[i] .* δm)
-        ϕ[i] = norm(d_non .- d_lin)
+        ϕ[i] = norm(dmask .* (d_non .- d_lin))
         if i>1
             μobs[i-1] = ϕ[i-1]/ϕ[i]
             μexp[i-1] = (μ[i-1]/μ[i]).^2
