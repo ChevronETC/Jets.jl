@@ -105,7 +105,7 @@ Base.range(jet::Jet) = jet.rng
 Base.eltype(jet::Jet) = promote_type(eltype(domain(jet)), eltype(range(jet)))
 state(jet::Jet) = jet.s
 state!(jet, s) = begin jet.s = merge(jet.s, s); jet end
-perfstat(jet::T) where {D,R,T<:Jet{D,R,Function}} = Float64(0)
+perfstat(jet::T) where {D,R,F<:Function,T<:Jet{D,R,F}} = Float64(0)
 point(jet::Jet) = jet.mₒ
 
 function point!(jet::Jet, mₒ::AbstractArray)
