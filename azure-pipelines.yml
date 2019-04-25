@@ -9,7 +9,7 @@ steps:
     mkdir -p $(HOME)/.julia/dev
     cp -r ${BUILD_SOURCESDIRECTORY} $(HOME)/.julia/dev/Jets
 
-    /opt/julia/bin/julia -e 'using Pkg; pkg"add LinearAlgebra"'
+    /opt/julia/bin/julia -e 'using Pkg; pkg"add CRC32c LinearAlgebra"'
     /opt/julia/bin/julia -e 'using Pkg; pkg"dev /home/vsts/.julia/dev/Jets"; pkg"precompile"'
   displayName: 'Install System'
 
