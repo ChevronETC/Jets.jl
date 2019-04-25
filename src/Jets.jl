@@ -379,7 +379,7 @@ for f in (:Array, :ones, :rand, :zeros)
     @eval (Base.$f)(R::JetBSpace{T,S}) where {T,S<:JetAbstractSpace} = BlockArray([($f)(space(R, i)) for i=1:length(R.spaces)], R.indices)
 end
 
-function JetBlock(ops::AbstractMatrix{T}) where {T<:Jop}
+function JetBlock(ops::AbstractMatrix{T}; kwargs...) where {T<:Jop}
     dom = JetBSpace([domain(ops[1,i]) for i=1:size(ops,2)])
     rng = JetBSpace([range(ops[i,1]) for i=1:size(ops,1)])
     Jet(f! = JetBlock_f!, df! = JetBlock_df!, df′! = JetBlock_df′!, dom = dom, rng = rng, s = (ops=ops,dom=dom,rng=rng))
