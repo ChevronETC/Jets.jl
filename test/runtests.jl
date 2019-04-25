@@ -411,6 +411,14 @@ end
     @test L*δm ≈ K*δm
 end
 
+@testset begin "block operator with keyword arguments"
+    Jets.JopBlock(ops::AbstractArray{T};foo=1,bar=2) where {T<:Jop}= length(ops) + foo + bar
+    x = @blockop [JopBaz(rand(2,2)) ; JopBaz(rand(2,2))] foo = 3
+    @test x == 7
+    x = @blockop [JopBaz(rand(2,2)) ; JopBaz(rand(2,2))] foo = 3 bar = 4
+    @test x == 9
+end
+
 @testset "block operator, singleton" begin
     B = JopBaz(rand(5,5))
     A = @blockop [B for i=1:1, j=1:1]
