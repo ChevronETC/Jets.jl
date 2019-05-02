@@ -573,8 +573,8 @@ end
 CRC32c.crc32c(m::Array{<:Union{UInt32,Float32,Float64,Complex{Float32},Complex{Float64}}}) = CRC32c.crc32c(unsafe_wrap(Array, convert(Ptr{UInt8}, pointer(m)), length(m)*sizeof(eltype(m)), own=false))
 #-->
 
-export Jet, JetAbstractSpace, JetSpace, Jop, JopAdjoint, JopLn, JopNl, JopZeroBlock,
-    @blockop, domain, getblock, getblock!, dot_product_test, getblock,
+export Jet, JetAbstractSpace, JetSpace, JetSSpace, Jop, JopAdjoint, JopLn, JopNl,
+    JopZeroBlock, @blockop, domain, getblock, getblock!, dot_product_test, getblock,
     getblock!, indices, jacobian, jet, linearity_test, linearization_test,
     nblocks, perfstat, point, setblock!, shape, space, state, state!, symspace
 
