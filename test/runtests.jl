@@ -438,6 +438,13 @@ end
     @test L*δm ≈ K*δm
 end
 
+@testset begin "block operator with keyword arguments"
+    x = @blockop [JopBaz(rand(2,2)) ; JopBaz(rand(2,2))] foo = 3
+    @test isa(x, Jop)
+    x = @blockop [JopBaz(rand(2,2)) ; JopBaz(rand(2,2))] foo = 3 bar = 4
+    @test isa(x, Jop)
+end
+
 @testset "block operator, singleton" begin
     B = JopBaz(rand(5,5))
     A = @blockop [B for i=1:1, j=1:1]

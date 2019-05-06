@@ -105,6 +105,7 @@ Base.range(jet::Jet) = jet.rng
 Base.eltype(jet::Jet) = promote_type(eltype(domain(jet)), eltype(range(jet)))
 state(jet::Jet) = jet.s
 state!(jet, s) = begin jet.s = merge(jet.s, s); jet end
+perfstat(jet::T) where {D,R,F<:Function,T<:Jet{D,R,F}} = Float64(0)
 point(jet::Jet) = jet.mₒ
 Base.close(jet::Jet) = finalize(jet)
 
@@ -121,6 +122,7 @@ point(A::JopLn) = point(jet(A))
 point(A::JopAdjoint) = point(jet(A.op))
 state(A::Jop) = state(jet(A))
 state!(A::Jop, s) = state!(jet(A), s)
+perfstat(A::Jop) = perfstat(jet(A))
 Base.close(A::Jop) = close(jet(A))
 
 domain(A::Jop) = domain(jet(A))
@@ -379,14 +381,14 @@ for f in (:Array, :ones, :rand, :zeros)
     @eval (Base.$f)(R::JetBSpace{T,S}) where {T,S<:JetAbstractSpace} = BlockArray([($f)(space(R, i)) for i=1:length(R.spaces)], R.indices)
 end
 
-function JetBlock(ops::AbstractMatrix{T}) where {T<:Jop}
+function JetBlock(ops::AbstractMatrix{T}; kwargs...) where {T<:Jop}
     dom = JetBSpace([domain(ops[1,i]) for i=1:size(ops,2)])
     rng = JetBSpace([range(ops[i,1]) for i=1:size(ops,1)])
     Jet(f! = JetBlock_f!, df! = JetBlock_df!, df′! = JetBlock_df′!, dom = dom, rng = rng, s = (ops=ops,dom=dom,rng=rng))
 end
-JopBlock(ops::AbstractMatrix{T}) where {T<:Union{JopLn,JopAdjoint}} = JopLn(JetBlock(ops))
-JopBlock(ops::AbstractMatrix{T}) where {T<:Jop} = JopNl(JetBlock(ops))
-JopBlock(ops::AbstractVector{T}) where {T<:Jop} = JopBlock(reshape(ops, length(ops), 1))
+JopBlock(ops::AbstractMatrix{T}; kwargs...) where {T<:Union{JopLn,JopAdjoint}} = JopLn(JetBlock(ops; kwargs...))
+JopBlock(ops::AbstractMatrix{T}; kwargs...) where {T<:Jop} = JopNl(JetBlock(ops; kwargs...))
+JopBlock(ops::AbstractVector{T}; kwargs...) where {T<:Jop} = JopBlock(reshape(ops, length(ops), 1); kwargs...)
 
 JopZeroBlock(dom::JetSpace, rng::JetSpace) = JopLn(df! = JopZeroBlock_df!, dom = dom, rng = rng)
 JopZeroBlock_df!(d, m; kwargs...) = d .= 0
@@ -397,6 +399,14 @@ Base.iszero(A::Jop) = iszero(jet(A))
 
 macro blockop(ex)
     :(JopBlock($(esc(ex))))
+end
+
+macro blockop(ex, kw)
+    :(JopBlock($(esc(ex)); $(esc(kw))))
+end
+
+macro blockop(ex, kw1, kw2)
+    :(JopBlock($(esc(ex)); $(esc(kw1)), $(esc(kw2))))
 end
 
 function JetBlock_f!(d::AbstractArray, m::AbstractArray; ops, dom, rng, kwargs...)
@@ -565,9 +575,9 @@ end
 CRC32c.crc32c(m::Array{<:Union{UInt32,Float32,Float64,Complex{Float32},Complex{Float64}}}) = CRC32c.crc32c(unsafe_wrap(Array, convert(Ptr{UInt8}, pointer(m)), length(m)*sizeof(eltype(m)), own=false))
 #-->
 
-export Jet, JetAbstractSpace, JetSpace, Jop, JopLn, JopNl, JopZeroBlock,
-    @blockop, domain, getblock, getblock!, dot_product_test, getblock,
+export Jet, JetAbstractSpace, JetSpace, JetSSpace, Jop, JopAdjoint, JopLn, JopNl,
+    JopZeroBlock, @blockop, domain, getblock, getblock!, dot_product_test, getblock,
     getblock!, indices, jacobian, jet, linearity_test, linearization_test,
-    nblocks, point, setblock!, shape, space, state, state!, symspace
+    nblocks, perfstat, point, setblock!, shape, space, state, state!, symspace
 
 end
