@@ -106,6 +106,7 @@ Base.eltype(jet::Jet) = promote_type(eltype(domain(jet)), eltype(range(jet)))
 state(jet::Jet) = jet.s
 state!(jet, s) = begin jet.s = merge(jet.s, s); jet end
 point(jet::Jet) = jet.mₒ
+Base.close(jet::Jet) = finalize(jet)
 
 function point!(jet::Jet, mₒ::AbstractArray)
     jet.mₒ = mₒ
@@ -120,6 +121,7 @@ point(A::JopLn) = point(jet(A))
 point(A::JopAdjoint) = point(jet(A.op))
 state(A::Jop) = state(jet(A))
 state!(A::Jop, s) = state!(jet(A), s)
+Base.close(A::Jop) = close(jet(A))
 
 domain(A::Jop) = domain(jet(A))
 Base.range(A::Jop) = range(jet(A))
