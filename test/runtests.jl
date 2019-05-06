@@ -32,6 +32,16 @@ function JopRosenbrock()
         upstate! = JopRosenbrock_upstate!, dom = dom, rng = rng, s = (J=[-1.0 0.0;0.0 10.0],))
 end
 
+JopClose_df!(d,m;kwargs...) = d .= m
+function JopClose()
+    dom = JetSpace(Float64, 2)
+    rng = JetSpace(Float64, 2)
+    write("foo.txt", "bar")
+    j = Jet(;df! = JopClose_df!, dom = dom, rng = rng)
+    finalizer(x->rm("foo.txt", force=true), j)
+    JopLn(j)
+end
+
 @testset "JetSpace, construction, n=$n, T=$T" for n in ((2,),(2,3),(2,3,4)), T in (Float32,Float64,Complex{Float32},Complex{Float64})
     N = length(n)
     R = JetSpace(T, n...)
@@ -144,6 +154,23 @@ end
     m = rand(2)
     J = jacobian(F, m)
     @test state(J).J ≈ [-1.0 0.0;-20*m[1] 10.0]
+end
+
+@testset "JopLn finalizer/close" begin
+    A = JopClose()
+    @test isfile("foo.txt")
+    close(A)
+    @test !isfile("foo.txt")
+    A = JopClose()
+    B = JopNl(jet(A))
+    @test isfile("foo.txt")
+    close(B)
+    @test !isfile("foo.txt")
+    A = JopClose()
+    j = jet(A)
+    @test isfile("foo.txt")
+    close(j)
+    @test !isfile("foo.txt")
 end
 
 function indexmap(I)
