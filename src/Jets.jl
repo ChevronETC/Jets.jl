@@ -380,7 +380,7 @@ for f in (:Array, :ones, :rand, :zeros)
 end
 
 function JetBlock(ops::AbstractMatrix{T}; kwargs...) where {T<:Jop}
-    dom = JetBSpace([domain(ops[1,i]) for i=1:size(ops,2)])
+    dom = size(ops,2) == 1 ? domain(ops[1,1]) : JetBSpace([domain(ops[1,i]) for i=1:size(ops,2)])
     rng = JetBSpace([range(ops[i,1]) for i=1:size(ops,1)])
     Jet(f! = JetBlock_f!, df! = JetBlock_df!, df′! = JetBlock_df′!, dom = dom, rng = rng, s = (ops=ops,dom=dom,rng=rng))
 end
