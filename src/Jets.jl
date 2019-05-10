@@ -264,7 +264,7 @@ Base.:∘(A₂::Jop, A₁::Jop) = JopNl(JetComposite((jops(A₂)..., jops(A₁).
 Base.:∘(A₂::AbstractMatrix, A₁::AbstractMatrix) = A₂*A₁
 
 _matmul_df!(d, m; A, kwargs...) = mul!(d, A, m)
-_matmul_df′!(m, d; A, kwargs...) = mul!(d, adjoint(A), m)
+_matmul_df′!(m, d; A, kwargs...) = mul!(m, adjoint(A), d)
 Base.:∘(A₂::Jop, A₁::AbstractMatrix) = A₂ ∘ JopLn(;dom = domain(A₁), rng = range(A₁), df! = _matmul_df!, df′! = _matmul_df′!, s=(A=A₁,))
 Base.:∘(A₂::AbstractMatrix, A₁::Jop) = JopLn(;dom = domain(A₂), rng = range(A₂), df! = _matmul_df!, df′! = _matmul_df′!, s=(A=A₂,)) ∘ A₁
 
