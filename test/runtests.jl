@@ -256,6 +256,36 @@ end
     @test B₄₃₂₁*m ≈ A₄₃₂₁*m
 end
 
+@testset "composition, linear with matrices" begin
+    A₁,A₂,A₄ = map(d->JopBaz(rand(10,10)), 1:4)
+    A₃ = rand(10,10)
+    B₁,B₂,B₄ = map(A->state(A).A, (A₁,A₂,A₄))
+    B₃ = A₃
+    A₂₁ = A₂ ∘ A₁
+    A₃₂₁ = A₃ ∘ A₂ ∘ A₁
+    A₄₃₂₁ = A₄ ∘ A₃ ∘ A₂ ∘ A₁
+    m = rand(domain(A₁))
+    d = A₂₁*m
+    @test d ≈ B₂ * ( B₁ * m )
+    d = A₃₂₁*m
+    @test d ≈ B₃ * (B₂ * ( B₁ * m))
+    d = A₄₃₂₁*m
+    @test d ≈ B₄ * (B₃ * ( B₂ * ( B₁ * m)))
+
+    a = A₂₁'*d
+    @test a ≈ (B₁' * ( B₂' * d))
+    a = A₃₂₁'*d
+    @test a ≈ (B₁' * ( B₂' * ( B₃' * d )))
+    a = A₄₃₂₁'*d
+    @test a ≈ (B₁' * ( B₂' * ( B₃' * ( B₄' * d))))
+
+    @test domain(A₄₃₂₁) == JetSpace(Float64, 10)
+    @test eltype(A₄₃₂₁) == Float64
+
+    B₄₃₂₁ = convert(Array, A₄₃₂₁)
+    @test B₄₃₂₁*m ≈ A₄₃₂₁*m
+end
+
 @testset "composition, nonlinear" begin
     F₁,F₂,F₃,F₄ = map(i->JopBar(10), 1:4)
     F₂₁ = F₂ ∘ F₁
