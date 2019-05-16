@@ -10,7 +10,7 @@ JopBar_f!(d,m;kwargs...) = d .= m.^2
 JopBar_df!(δd,δm;mₒ,kwargs...) = δd .= 2 .* mₒ .* δm
 function JopBar(n)
     spc = JetSpace(Float64, n)
-    JopNl(f! = JopBar_f!, df! = JopBar_df!, df′! = JopBar_df!, dom = spc, rng = spc)
+    JopNl(f! = JopBar_f!, df! = JopBar_df!, dom = spc, rng = spc)
 end
 
 JopBaz_df!(d,m;A,kwargs...) =  d .= A * m
