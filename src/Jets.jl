@@ -98,6 +98,11 @@ struct JopAdjoint{J<:Jet,T<:Jop{J}} <: Jop{J}
     op::T
 end
 
+Base.copy(jet::Jet) = Jet(jet.dom, jet.rng, jet.f!, jet.df!, jet.df′!, jet.upstate!, copy(jet.mₒ), deepcopy(jet.s))
+Base.copy(A::JopLn) = JopLn(copy(jet(A)))
+Base.copy(A::JopAdjoint) = JopAdjoint(copy(A.op))
+Base.copy(F::JopNl) = JopNl(copy(jet(F)))
+
 JopLn(A::JopAdjoint) = A
 
 domain(jet::Jet) = jet.dom
@@ -148,9 +153,12 @@ shape(A::AbstractMatrix) = ((size(A, 1),), (size(A, 2),))
 Base.size(A::Union{Jet,Jop}, i) = prod(shape(A, i))
 Base.size(A::Union{Jet,Jop}) = (size(A, 1), size(A, 2))
 
-jacobian(jet::Jet, mₒ::AbstractArray) = JopLn(jet, mₒ)
-jacobian(F::JopNl, mₒ::AbstractArray) = jacobian(jet(F), mₒ)
-jacobian(A::Union{JopLn,AbstractMatrix}, mₒ::AbstractArray) = A
+jacobian!(jet::Jet, mₒ::AbstractArray) = JopLn(jet, mₒ)
+jacobian!(F::JopNl, mₒ::AbstractArray) = jacobian!(jet(F), mₒ)
+jacobian!(A::Union{JopLn,AbstractMatrix}, mₒ::AbstractArray) = A
+
+jacobian(F::Union{Jet,Jop}, mₒ::AbstractArray) = jacobian!(copy(F), copy(mₒ))
+jacobian(A::AbstractMatrix, mₒ::AbstractArray) = copy(A)
 
 Base.adjoint(A::JopLn) = JopAdjoint(A)
 Base.adjoint(A::JopAdjoint) = A.op
