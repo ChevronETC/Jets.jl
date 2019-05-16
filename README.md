@@ -105,3 +105,11 @@ close(jet) # closing a jet makes an explicit call to its finalizers
 Note that the `f!`, `df!` and `df′!` methods are not exported.
 
 ## Linear operators
+
+## Differences from Jot
+Three new Julia language features that we take advantage of:
+1. The Julia abstract array interface.
+2. The Julia broadcasting and fused broadcasting feature
+3. Named tuples
+4. Splatting named tuples into keyword arguments of a function
+5. Functions have associated singleton types
