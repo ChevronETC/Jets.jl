@@ -98,6 +98,11 @@ struct JopAdjoint{J<:Jet,T<:Jop{J}} <: Jop{J}
     op::T
 end
 
+Base.copy(jet::Jet, copymₒ=true) = Jet(jet.dom, jet.rng, jet.f!, jet.df!, jet.df′!, jet.upstate!, copymₒ ? copy(jet.mₒ) : jet.mₒ, deepcopy(jet.s))
+Base.copy(A::JopLn, copymₒ=true) = JopLn(copy(jet(A), copymₒ))
+Base.copy(A::JopAdjoint, copymₒ=true) = JopAdjoint(copy(A.op, copymₒ))
+Base.copy(F::JopNl, copymₒ=true) = JopNl(copy(jet(F), copymₒ))
+
 JopLn(A::JopAdjoint) = A
 
 domain(jet::Jet) = jet.dom
@@ -148,9 +153,12 @@ shape(A::AbstractMatrix) = ((size(A, 1),), (size(A, 2),))
 Base.size(A::Union{Jet,Jop}, i) = prod(shape(A, i))
 Base.size(A::Union{Jet,Jop}) = (size(A, 1), size(A, 2))
 
-jacobian(jet::Jet, mₒ::AbstractArray) = JopLn(jet, mₒ)
-jacobian(F::JopNl, mₒ::AbstractArray) = jacobian(jet(F), mₒ)
-jacobian(A::Union{JopLn,AbstractMatrix}, mₒ::AbstractArray) = A
+jacobian!(jet::Jet, mₒ::AbstractArray) = JopLn(jet, mₒ)
+jacobian!(F::JopNl, mₒ::AbstractArray) = jacobian!(jet(F), mₒ)
+jacobian!(A::Union{JopLn,AbstractMatrix}, mₒ::AbstractArray) = A
+
+jacobian(F::Union{Jet,Jop}, mₒ::AbstractArray) = jacobian!(copy(F, false), copy(mₒ))
+jacobian(A::AbstractMatrix, mₒ::AbstractArray) = copy(A)
 
 Base.adjoint(A::JopLn) = JopAdjoint(A)
 Base.adjoint(A::JopAdjoint) = A.op
@@ -552,7 +560,7 @@ function linearization_test(F::JopNl, mₒ::AbstractArray;
     δm ./= maximum(abs, δm)
 
     Fₒ = F*mₒ
-    Jₒ = jacobian(F, mₒ)
+    Jₒ = jacobian!(F, mₒ)
     Jₒδm = Jₒ*δm
 
     μ = convert(Array{eltype(mₒ)}, sort(μ, rev=true))
@@ -586,7 +594,7 @@ CRC32c.crc32c(m::Array{<:Union{UInt32,Float32,Float64,Complex{Float32},Complex{F
 
 export Jet, JetAbstractSpace, JetSpace, JetSSpace, Jop, JopAdjoint, JopLn, JopNl,
     JopZeroBlock, @blockop, domain, getblock, getblock!, dot_product_test, getblock,
-    getblock!, indices, jacobian, jet, linearity_test, linearization_test,
+    getblock!, indices, jacobian, jacobian!, jet, linearity_test, linearization_test,
     nblocks, perfstat, point, setblock!, shape, space, state, state!, symspace
 
 end

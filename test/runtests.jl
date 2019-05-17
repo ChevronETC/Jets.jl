@@ -132,7 +132,7 @@ end
     d .= 0
     mul!(d, F, m)
     @test d ≈ m.^2
-    J = jacobian(F, m)
+    J = jacobian!(F, m)
     @test point(J) ≈ m
     d = J*m
     @test d ≈ 2 .* point(J) .* m
@@ -152,8 +152,24 @@ end
 @testset "upstate" begin
     F = JopRosenbrock()
     m = rand(2)
-    J = jacobian(F, m)
+    J = jacobian!(F, m)
     @test state(J).J ≈ [-1.0 0.0;-20*m[1] 10.0]
+end
+
+@testset "multiple simultaneous linearizations" begin
+    F = JopBar(2)
+    J₁ = jacobian(F, [1.0,2.0])
+    J₂ = jacobian(F, [3.0,4.0])
+
+    δm = [1.0, 2.0]
+    @test J₁ * δm ≈ 2 .* [1.0,2.0] .* δm
+    @test J₂ * δm ≈ 2 .* [3.0,4.0] .* δm
+
+    J₁ = jacobian!(F, [1.0,2.0])
+    J₂ = jacobian!(F, [3.0,4.0])
+
+    @test J₁ * δm ≈ 2 .* [3.0,4.0] .* δm
+    @test J₂ * δm ≈ J₁ * δm
 end
 
 @testset "JopLn finalizer/close" begin
@@ -300,15 +316,15 @@ end
     @test d ≈ F₄ * ( F₃ * ( F₂ * ( F₁ * m)))
 
     m = ones(10)
-    J₁ = jacobian(F₁, m)
-    J₂₁ = jacobian(F₂, F₁*m) ∘ J₁
-    J₃₂₁ = jacobian(F₃, (F₂ ∘ F₁) * m) ∘ jacobian(F₂, F₁ * m) ∘ J₁
-    J₄₃₂₁ = jacobian(F₄, (F₃ ∘ F₂ ∘ F₁) * m) ∘ jacobian(F₃, (F₂ ∘ F₁) * m) ∘ jacobian(F₂, F₁ * m) ∘ J₁
+    J₁ = jacobian!(F₁, m)
+    J₂₁ = jacobian!(F₂, F₁*m) ∘ J₁
+    J₃₂₁ = jacobian!(F₃, (F₂ ∘ F₁) * m) ∘ jacobian!(F₂, F₁ * m) ∘ J₁
+    J₄₃₂₁ = jacobian!(F₄, (F₃ ∘ F₂ ∘ F₁) * m) ∘ jacobian!(F₃, (F₂ ∘ F₁) * m) ∘ jacobian!(F₂, F₁ * m) ∘ J₁
 
-    L₁ = jacobian(F₁, m)
-    L₂₁ = jacobian(F₂₁, m)
-    L₃₂₁ = jacobian(F₃₂₁, m)
-    L₄₃₂₁ = jacobian(F₄₃₂₁, m)
+    L₁ = jacobian!(F₁, m)
+    L₂₁ = jacobian!(F₂₁, m)
+    L₃₂₁ = jacobian!(F₃₂₁, m)
+    L₄₃₂₁ = jacobian!(F₄₃₂₁, m)
 
     δm = ones(10)
     @test J₁ * δm ≈ L₁ * δm
@@ -336,15 +352,15 @@ end
     @test d ≈ A₄ * ( F₃ * ( A₂' * ( F₁ * m)))
 
     m = rand(10)
-    J₁ = jacobian(F₁, m)
-    J₂₁ = A₂' ∘ jacobian(F₁, m)
-    J₃₂₁ = jacobian(F₃, A₂'*(F₁*m)) ∘ A₂' ∘ jacobian(F₁, m)
-    J₄₃₂₁ = A₄ ∘ jacobian(F₃, A₂'*(F₁*m)) ∘ A₂' ∘ jacobian(F₁, m)
+    J₁ = jacobian!(F₁, m)
+    J₂₁ = A₂' ∘ jacobian!(F₁, m)
+    J₃₂₁ = jacobian!(F₃, A₂'*(F₁*m)) ∘ A₂' ∘ jacobian!(F₁, m)
+    J₄₃₂₁ = A₄ ∘ jacobian!(F₃, A₂'*(F₁*m)) ∘ A₂' ∘ jacobian!(F₁, m)
 
-    L₁ = jacobian(F₁, m)
-    L₂₁ = jacobian(F₂₁, m)
-    L₃₂₁ = jacobian(F₃₂₁, m)
-    L₄₃₂₁ = jacobian(F₄₃₂₁, m)
+    L₁ = jacobian!(F₁, m)
+    L₂₁ = jacobian!(F₂₁, m)
+    L₃₂₁ = jacobian!(F₃₂₁, m)
+    L₄₃₂₁ = jacobian!(F₄₃₂₁, m)
 
     δm = rand(10)
     @test J₁ * δm ≈ L₁ * δm
@@ -446,14 +462,14 @@ end
     @test d[11:20] ≈ B₂₁ * m[1:10]                  + F₂₃ * m[21:30] + C₂₄ * m[31:40]
     @test d[21:30] ≈ F₃₁ * m[1:10] + B₃₂ * m[11:20] + B₃₃ * m[21:30]
 
-    J = jacobian(F,m)
+    J = jacobian!(F,m)
     δm = rand(domain(J))
     δd = J * δm
 
-    J₁₂ = jacobian(F₁₂,m[11:20])
-    J₂₃ = jacobian(F₂₃,m[21:30])
-    J₂₄ = jacobian(C₂₄,m[31:40])
-    J₃₁ = jacobian(F₃₁,m[1:10])
+    J₁₂ = jacobian!(F₁₂,m[11:20])
+    J₂₃ = jacobian!(F₂₃,m[21:30])
+    J₂₄ = jacobian!(C₂₄,m[31:40])
+    J₃₁ = jacobian!(F₃₁,m[1:10])
 
     L = @blockop [A₁₁ J₁₂ A₁₃ A₁₄;
                   A₂₁ Z₂₂ J₂₃ J₂₄;
@@ -486,9 +502,9 @@ end
     F = JopBar(5)
     G = @blockop [F for i=1:1, j=1:1]
     @test F*m ≈ G*m
-    J = jacobian(F, m)
-    @test J*m ≈ jacobian(G,m)*m
-    @test J'*d ≈ (jacobian(G,m)'*d)
+    J = jacobian!(F, m)
+    @test J*m ≈ jacobian!(G,m)*m
+    @test J'*d ≈ (jacobian!(G,m)'*d)
 end
 
 @testset "block operator, tall-and-skinny" begin
@@ -502,9 +518,9 @@ end
     G = [JopBar(5) for i=1:3, j=1:1]
     F = @blockop G
     @test F*m ≈ [G[1,1]*m;G[2,1]*m;G[3,1]*m]
-    J = jacobian(F,m)
-    @test J*m ≈ [jacobian(G[1,1],m)*m;jacobian(G[2,1],m)*m;jacobian(G[3,1],m)*m]
-    @test J'*d ≈ jacobian(G[1,1],m)'*d[1:5] + jacobian(G[2,1],m)'*d[6:10] + jacobian(G[3,1],m)'*d[11:15]
+    J = jacobian!(F,m)
+    @test J*m ≈ [jacobian!(G[1,1],m)*m;jacobian!(G[2,1],m)*m;jacobian!(G[3,1],m)*m]
+    @test J'*d ≈ jacobian!(G[1,1],m)'*d[1:5] + jacobian!(G[2,1],m)'*d[6:10] + jacobian!(G[3,1],m)'*d[11:15]
 
     B₁₁ = getblock(A,1,1)
     @test isa(B₁₁,JopLn)
@@ -526,7 +542,7 @@ end
     G = [JopBar(5) for i=1:1, j=1:3]
     F = @blockop G
     @test F*m ≈ G[1,1]*m[1:5] + G[1,2]*m[6:10] + G[1,3]*m[11:15]
-    J = jacobian(F,m)
-    @test J*m ≈ jacobian(G[1,1],m[1:5])*m[1:5] + jacobian(G[1,2],m[6:10])*m[6:10] + jacobian(G[1,3],m[11:15])*m[11:15]
-    @test J'*d ≈ [jacobian(G[1,1],m[1:5])'*d;jacobian(G[1,2],m[6:10])'*d;jacobian(G[1,3],m[11:15])'*d]
+    J = jacobian!(F,m)
+    @test J*m ≈ jacobian!(G[1,1],m[1:5])*m[1:5] + jacobian!(G[1,2],m[6:10])*m[6:10] + jacobian!(G[1,3],m[11:15])*m[11:15]
+    @test J'*d ≈ [jacobian!(G[1,1],m[1:5])'*d;jacobian!(G[1,2],m[6:10])'*d;jacobian!(G[1,3],m[11:15])'*d]
 end
