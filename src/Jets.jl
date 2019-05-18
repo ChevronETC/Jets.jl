@@ -280,9 +280,9 @@ function point!(j::Jet{D,R,typeof(JetComposite_f!)}, mₒ::AbstractArray) where 
     j.mₒ = mₒ
     ops = state(j).ops
     _m = copy(mₒ)
-    for i = 1:length(ops)
+    for i = length(ops):-1:1
         point!(jet(ops[i]), _m)
-        if i < length(ops)
+        if i > 1
             _m = mul!(zeros(range(ops[i])), ops[i], _m)
         end
     end
