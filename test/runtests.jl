@@ -257,6 +257,7 @@ end
     @test d ≈ B₃ * (B₂ * ( B₁ * m))
     d = A₄₃₂₁*m
     @test d ≈ B₄ * (B₃ * ( B₂ * ( B₁ * m)))
+    @test length(state(A₄₃₂₁).ops) == 4
 
     a = A₂₁'*d
     @test a ≈ (B₁' * ( B₂' * d))
@@ -270,6 +271,9 @@ end
 
     B₄₃₂₁ = convert(Array, A₄₃₂₁)
     @test B₄₃₂₁*m ≈ A₄₃₂₁*m
+
+    C₄₃₂₁ = A₄ ∘ A₃ ∘ A₂₁'
+    @test C₄₃₂₁*m ≈ A₄ * (A₃ * (A₁' * (A₂' * m)))
 end
 
 @testset "composition, linear with matrices" begin
