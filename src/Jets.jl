@@ -265,8 +265,16 @@ function JetComposite_df′!(m::T, d; ops, kwargs...) where {T<:AbstractArray}
     m::T
 end
 
-jops(op::Jop{J}) where {D,R,J<:Jet{D,R,typeof(JetComposite_f!)}} = state(jet(op)).ops
 jops(op::Jop) = (op,)
+jops(op::JopLn{J}) where {D,R,J<:Jet{D,R,typeof(JetComposite_f!)}} = state(jet(op)).ops
+jops(op::JopNl{J}) where {D,R,J<:Jet{D,R,typeof(JetComposite_f!)}} = state(jet(op)).ops
+
+function jops(op::JopAdjoint{J,T}) where {D,R,J<:Jet{D,R,typeof(JetComposite_f!)},T<:JopLn{J}}
+    ops = state(op.op).ops
+    n = length(ops)
+    ntuple(i->JopAdjoint(ops[n-i+1]), n)
+end
+
 Base.:∘(A₂::Union{JopAdjoint,JopLn}, A₁::Union{JopAdjoint,JopLn}) = JopLn(JetComposite((jops(A₂)..., jops(A₁)...)))
 Base.:∘(A₂::Jop, A₁::Jop) = JopNl(JetComposite((jops(A₂)..., jops(A₁)...)))
 Base.:∘(A₂::AbstractMatrix, A₁::AbstractMatrix) = A₂*A₁
