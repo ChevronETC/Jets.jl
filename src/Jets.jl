@@ -345,7 +345,7 @@ end
 
 Base.similar(A::BlockArray) = BlockArray([similar(A.arrays[i]) for i=1:length(A.arrays)], A.indices)
 
-LinearAlgebra.norm(x::BlockArray, p::Real=2) = mapreduce(_x->norm(_x,p)^p, +, x.arrays)^(1/p)
+LinearAlgebra.norm(x::BlockArray{T}, p::Real=2) where {T} = (mapreduce(_x->norm(_x,p)^p, +, x.arrays)^(one(T)/p))::T
 
 function LinearAlgebra.dot(x::BlockArray{T}, y::BlockArray{T}) where {T}
     a = zero(T)
