@@ -220,6 +220,11 @@ end
     @test norm(x,Inf) ≈ norm(y,Inf)
     x[1,1] = x[6,1] = 0
     @test norm(x,0) ≈ 2*norm(y,0)
+    z = abs.(x)
+    @test typeof(z) == Array{Float64,2}
+    for i2 in 1:4, i1 in 1:8
+        @test z[i1,i2] ≈ abs(x[i1,i2])
+    end
 end
 
 @testset "Symmetric spaces, broadcast" begin

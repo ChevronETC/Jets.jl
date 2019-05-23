@@ -226,9 +226,13 @@ end
 # SymmetricArray broadcasting interface implementation --<
 Base.BroadcastStyle(::Type{<:SymmetricArray}) = Broadcast.ArrayStyle{SymmetricArray}()
 
-function Base.similar(bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{SymmetricArray}}, ::Type{T}) where {T}
+function Base.similar(bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{SymmetricArray}}, ::Type{T}) where {T<:Complex}
     A = find_symmetricarray(bc)
     SymmetricArray(similar(A.A), A.n, A.map)
+end
+function Base.similar(bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{SymmetricArray}}, ::Type{T}) where {T<:Real}
+    A = find_symmetricarray(bc)
+    Array{T}(undef, size(A))
 end
 find_symmetricarray(bc::Broadcast.Broadcasted) = find_symmetricarray(bc.args)
 find_symmetricarray(args::Tuple) = find_symmetricarray(find_symmetricarray(args[1]), Base.tail(args))
