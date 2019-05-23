@@ -454,6 +454,7 @@ end
     @test nblocks(F) == (3,4)
     @test nblocks(F,1) == 3
     @test nblocks(F,2) == 4
+    @test nblocks(A₁₁) == (1,1)
 
     _F₁₂ = getblock(JopNl,F,1,2)
     m = rand(domain(F₁₂))

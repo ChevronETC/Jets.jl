@@ -330,6 +330,7 @@ Base.eltype(R::Type{JetBSpace{T}}) where {T} = T
 indices(R::JetBSpace, iblock::Integer) = R.indices[iblock]
 space(R::JetBSpace, iblock::Integer) = R.spaces[iblock]
 nblocks(R::JetBSpace) = length(R.spaces)
+nblocks(R::JetAbstractSpace) = 1
 
 struct BlockArray{T,A<:AbstractArray{T}} <: AbstractArray{T,1}
     arrays::Vector{A}
@@ -519,10 +520,10 @@ function point!(j::Jet{D,R,typeof(JetBlock_f!)}, mₒ::AbstractArray) where {D<:
     j
 end
 
-nblocks(jet::Jet{D,R,typeof(JetBlock_f!)}) where {D<:JetAbstractSpace,R<:JetAbstractSpace}= size(state(jet).ops)
-nblocks(jet::Jet{D,R,typeof(JetBlock_f!)}, i) where {D<:JetAbstractSpace,R<:JetAbstractSpace} = size(state(jet).ops, i)
-nblocks(A::Jop{T}) where {T<:Jet{<:JetAbstractSpace,<:JetAbstractSpace,typeof(JetBlock_f!)}} = nblocks(jet(A))
-nblocks(A::Jop{T}, i) where {T<:Jet{<:JetAbstractSpace,<:JetAbstractSpace,typeof(JetBlock_f!)}} = nblocks(jet(A), i)
+nblocks(jet::Jet) = (nblocks(range(jet)), nblocks(domain(jet)))
+nblocks(jet::Jet, i) = i == 1 ? nblocks(range(jet)) : nblocks(domain(jet))
+nblocks(A::Jop) = nblocks(jet(A))
+nblocks(A::Jop, i) = nblocks(jet(A), i)
 
 getblock(jet::Jet{D,R,typeof(JetBlock_f!)}, i, j) where {D,R} = state(jet).ops[i,j]
 getblock(A::JopLn{T}, i, j) where {T<:Jet{<:JetAbstractSpace,<:JetAbstractSpace,typeof(JetBlock_f!)}} = getblock(jet(A), i, j)::JopLn
