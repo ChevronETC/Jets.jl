@@ -42,7 +42,7 @@ for f in (:ones, :rand, :zeros)
 end
 Base.Array(R::JetSpace{T,N}) where {T,N} = Array{T,N}(undef, size(R))
 
-Random.randperm(R::JetSpace, k::Int) = sort(randperm(length(R))[1:k])
+Random.randperm(R::JetAbstractSpace, k::Int) = sort(randperm(length(R))[1:k])
 
 jet_missing(m) = error("not implemented")
 
