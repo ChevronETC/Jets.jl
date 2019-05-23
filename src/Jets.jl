@@ -15,7 +15,7 @@ TODO...
 
 module Jets
 
-using CRC32c, LinearAlgebra
+using CRC32c, LinearAlgebra, Random
 
 abstract type JetAbstractSpace{T,N} end
 
@@ -41,6 +41,8 @@ for f in (:ones, :rand, :zeros)
     @eval (Base.$f)(R::JetSpace{T,N}) where {T,N} = ($f)(T,size(R))::Array{T,N}
 end
 Base.Array(R::JetSpace{T,N}) where {T,N} = Array{T,N}(undef, size(R))
+
+Random.randperm(R::JetAbstractSpace, k::Int) = sort(randperm(length(R))[1:k])
 
 jet_missing(m) = error("not implemented")
 

@@ -1,4 +1,4 @@
-using Jets, LinearAlgebra, Test
+using Jets, LinearAlgebra, Random, Test
 
 JopFoo_df!(d,m;diagonal,kwargs...) = d .= diagonal .* m
 function JopFoo(diag)
@@ -65,6 +65,8 @@ end
     @test size(rand(R)) == size(R)
     @test zeros(R) ≈ zeros(T, n)
     @test size(Array(R)) == size(R)
+    @test length(randperm(R, 2)) == 2
+    @test typeof(randperm(R, 2)) == Vector{Int}
 end
 
 @testset "Jet, construction" begin
