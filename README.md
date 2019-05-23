@@ -25,15 +25,15 @@ describes a function and its linearization at some point of its domain.
 Use SPGL1 in for data reconstruction
 ```julia
 using Pkg
-Pkg.add("Jets","JetPackTransforms","Solvers")
-using Jets, JetPackTransforms, Solvers
+Pkg.add("Jets","JetPack", "JetPackTransforms","Random","Solvers")
+using Jets, JetPack, JetPackTransforms, Random, Solvers
 M = JetSpace(Float64,32)
 D = JetSpace(Float64,512)
-R = JopRestriction(M,D,randperm(D,32))
-S = JopFft(R)
+R = JopRestriction(D,M,randperm(D,32))
+S = JopFft(D)
 t = [0:511;]*6*pi/511
-d = R*(sin(t)+cos(t)+2*sin(8t)+2*cos(8t))
-m = S'*solve(SolverSpgl1(),R∘S',d)
+d = R*(sin.(t)+cos.(t) .+ 2*sin.(8t) .+ 2*cos.(8t))
+m = S'*solve!(Spgl1(),d,R∘S',zeros(range(S)))
 ```
 
 ## Vector spaces
