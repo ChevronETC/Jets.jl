@@ -203,7 +203,7 @@ Base.parent(A::SymmetricArray) = A.A
 Base.IndexStyle(::Type{T}) where {T<:SymmetricArray} = IndexCartesian()
 Base.size(A::SymmetricArray) = A.n
 
-function Base.getindex(A::SymmetricArray{T}, I::Vararg{Int}) where {T}
+function Base.getindex(A::SymmetricArray{T,N}, I::Vararg{Int,N}) where {T,N}
     for idim = 1:ndims(A)
         if I[idim] > size(A.A, idim)
             return conj(A.A[A.map(I)])
@@ -212,7 +212,12 @@ function Base.getindex(A::SymmetricArray{T}, I::Vararg{Int}) where {T}
     A.A[CartesianIndex(I)]
 end
 
-function Base.setindex!(A::SymmetricArray{T}, v, I::Vararg{Int}) where {T}
+function Base.getindex(A::SymmetricArray, i::Int)
+    I = CartesianIndices(size(A))[i]
+    getindex(A, I.I...)
+end
+
+function Base.setindex!(A::SymmetricArray{T,N}, v, I::Vararg{Int,N}) where {T,N}
     for idim = 1:ndims(A)
         if I[idim] > size(A.A, idim)
             A.A[A.map(I)] = conj(v)
@@ -220,6 +225,23 @@ function Base.setindex!(A::SymmetricArray{T}, v, I::Vararg{Int}) where {T}
         end
     end
     A.A[CartesianIndex(I)] = v
+end
+
+function Base.setindex!(A::SymmetricArray, v, i::Int)
+    I = CartesianIndices(size(A))[i]
+    setindex!(A, v, I.I...)
+end
+
+Base.similar(A::SymmetricArray) = SymmetricArray(similar(A.A), A.n, A.map)
+
+get_symmetricarray_parent(bc::Broadcast.Broadcasted, ::Type{S}) where {S} = Broadcast.Broadcasted{S}(bc.f, map(arg->get_symmetricarray_parent(arg, S), bc.args))
+get_symmetricarray_parent(A::SymmetricArray, ::Type{<:Any}) = parent(A)
+get_symmetricarray_parent(A, ::Type{<:Any}) = A
+
+function Base.copyto!(dest::SymmetricArray{T,N}, bc::Broadcast.Broadcasted{Nothing}) where {T,N}
+    S = Broadcast.DefaultArrayStyle{N}
+    copyto!(parent(dest), get_symmetricarray_parent(bc, S))
+    dest
 end
 # -->
 
@@ -239,8 +261,6 @@ find_symmetricarray(args::Tuple) = find_symmetricarray(find_symmetricarray(args[
 find_symmetricarray(x) = x
 find_symmetricarray(a::SymmetricArray, rest) = a
 find_symmetricarray(::Any, rest) = find_symmetricarray(rest)
-
-Base.similar(A::SymmetricArray) = SymmetricArray(similar(A.A), A.n, A.map)
 # -->
 
 for f in (:ones, :rand, :zeros)
