@@ -233,16 +233,6 @@ function Base.setindex!(A::SymmetricArray, v, i::Int)
 end
 
 Base.similar(A::SymmetricArray) = SymmetricArray(similar(A.A), A.n, A.map)
-
-get_symmetricarray_parent(bc::Broadcast.Broadcasted, ::Type{S}) where {S} = Broadcast.Broadcasted{S}(bc.f, map(arg->get_symmetricarray_parent(arg, S), bc.args))
-get_symmetricarray_parent(A::SymmetricArray, ::Type{<:Any}) = parent(A)
-get_symmetricarray_parent(A, ::Type{<:Any}) = A
-
-function Base.copyto!(dest::SymmetricArray{T,N}, bc::Broadcast.Broadcasted{Nothing}) where {T,N}
-    S = Broadcast.DefaultArrayStyle{N}
-    copyto!(parent(dest), get_symmetricarray_parent(bc, S))
-    dest
-end
 # -->
 
 # SymmetricArray broadcasting interface implementation --<
@@ -261,6 +251,16 @@ find_symmetricarray(args::Tuple) = find_symmetricarray(find_symmetricarray(args[
 find_symmetricarray(x) = x
 find_symmetricarray(a::SymmetricArray, rest) = a
 find_symmetricarray(::Any, rest) = find_symmetricarray(rest)
+
+get_symmetricarray_parent(bc::Broadcast.Broadcasted, ::Type{S}) where {S} = Broadcast.Broadcasted{S}(bc.f, map(arg->get_symmetricarray_parent(arg, S), bc.args))
+get_symmetricarray_parent(A::SymmetricArray, ::Type{<:Any}) = parent(A)
+get_symmetricarray_parent(A, ::Type{<:Any}) = A
+
+function Base.copyto!(dest::SymmetricArray{T,N}, bc::Broadcast.Broadcasted{Nothing}) where {T,N}
+    S = Broadcast.DefaultArrayStyle{N}
+    copyto!(parent(dest), get_symmetricarray_parent(bc, S))
+    dest
+end
 # -->
 
 for f in (:ones, :rand, :zeros)
