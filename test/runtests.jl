@@ -498,6 +498,8 @@ end
     @test δd ≈ L*δm
     @test L'*δd ≈ J'*δd
 
+    @test mul!(rand(domain(L)), L', δd) ≈ J'*δd
+
     @test eltype(L) == Float64
     K = convert(Array, L)
 

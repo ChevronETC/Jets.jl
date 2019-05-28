@@ -515,6 +515,7 @@ function JetBlock_df′!(m::AbstractArray, d::AbstractArray; ops, dom, rng, kwar
     for iblkcol = 1:size(ops, 2)
         _m = getblock(m, iblkcol)
         if size(ops, 1) > 1
+            _m .= 0
             mtmp = length(mtmp) == length(domain(ops[1,iblkcol])) ? reshape(mtmp, domain(ops[1,iblkcol])) : zeros(domain(ops[1,iblkcol]))
         end
         for iblkrow = 1:size(ops, 1)
