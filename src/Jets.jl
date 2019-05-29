@@ -587,12 +587,16 @@ function dot_product_test(op::JopLn, m::AbstractArray, d::AbstractArray; mmask=[
 end
 
 function linearization_test(F::JopNl, mₒ::AbstractArray;
-        μ=[1.0, 0.5, 0.25, 0.125, 0.0625, 0.03125], mmask=[], dmask = [], seed=Inf)
+        μ=[1.0, 0.5, 0.25, 0.125, 0.0625, 0.03125], δm=[], mmask=[], dmask = [], seed=Inf)
     mmask = length(mmask) == 0 ? ones(domain(F)) : mmask
     dmask = length(dmask) == 0 ? ones(range(F)) : dmask
 
     isfinite(seed) && Random.seed!(seed)
-    δm = mmask .* (-1 .+ 2 .* rand(domain(F)))
+    if length(δm) == 0
+        δm = mmask .* (-1 .+ 2 .* rand(domain(F)))
+    else
+        δm .*= mmask
+    end
     δm ./= maximum(abs, δm)
 
     Fₒ = F*mₒ
