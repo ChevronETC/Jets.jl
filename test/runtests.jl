@@ -401,6 +401,15 @@ end
     _x = convert(Array, x)
     @test _x ≈ x
     @test norm(x) ≈ norm(_x)
+    @test norm(x,0) ≈ norm(_x,0)
+    @test norm(x,Inf) ≈ norm(_x,Inf)
+
+    R = Jets.JetBSpace([JetSpace(ComplexF64,2),JetSpace(ComplexF64,2,2),JetSpace(ComplexF64,2,3)])
+    x = rand(R)
+    _x = convert(Array, x)
+    y = abs.(x)
+    @test eltype(y) == Float64
+    @test y ≈ abs.(_x)
 end
 
 @testset "block arrays, broadcasting" begin
