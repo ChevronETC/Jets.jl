@@ -232,20 +232,16 @@ function Base.setindex!(A::SymmetricArray, v, i::Int)
     setindex!(A, v, I.I...)
 end
 
-Base.similar(A::SymmetricArray) = SymmetricArray(similar(A.A), A.n, A.map)
+Base.similar(A::SymmetricArray, ::Type{T}) where {T<:Complex} = SymmetricArray(similar(A.A), A.n, A.map)
+Base.similar(A::SymmetricArray, ::Type{T}) where {T<:Real} = Array{T}(undef, size(A))
+Base.similar(A::SymmetricArray{T}) where {T} = similar(A, T)
 # -->
 
 # SymmetricArray broadcasting interface implementation --<
 Base.BroadcastStyle(::Type{<:SymmetricArray}) = Broadcast.ArrayStyle{SymmetricArray}()
 
-function Base.similar(bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{SymmetricArray}}, ::Type{T}) where {T<:Complex}
-    A = find_symmetricarray(bc)
-    SymmetricArray(similar(A.A), A.n, A.map)
-end
-function Base.similar(bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{SymmetricArray}}, ::Type{T}) where {T<:Real}
-    A = find_symmetricarray(bc)
-    Array{T}(undef, size(A))
-end
+Base.similar(bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{SymmetricArray}}, ::Type{T}) where {T} = similar(find_symmetricarray(bc), T)
+
 find_symmetricarray(bc::Broadcast.Broadcasted) = find_symmetricarray(bc.args)
 find_symmetricarray(args::Tuple) = find_symmetricarray(find_symmetricarray(args[1]), Base.tail(args))
 find_symmetricarray(x) = x
@@ -370,9 +366,19 @@ function Base.setindex!(A::BlockArray, v, i::Int)
     A.arrays[j][i-A.indices[j][1]+1] = v
 end
 
-Base.similar(A::BlockArray) = BlockArray([similar(A.arrays[i]) for i=1:length(A.arrays)], A.indices)
+Base.similar(A::BlockArray, ::Type{T}) where {T} = BlockArray([similar(A.arrays[i], T) for i=1:length(A.arrays)], A.indices)
+Base.similar(A::BlockArray{T}) where {T} = similar(A, T)
 
-LinearAlgebra.norm(x::BlockArray{T}, p::Real=2) where {T} = (mapreduce(_x->norm(_x,p)^p, +, x.arrays)^(one(T)/p))::T
+function LinearAlgebra.norm(x::BlockArray{T}, p::Real=2) where {T}
+    _T = real(T)
+    if p == Inf
+        mapreduce(_x->norm(_x,p), max, x.arrays)::_T
+    elseif p == 0
+        mapreduce(_x->norm(_x,p), +, x.arrays)::_T
+    else
+        mapreduce(_x->norm(_x,p)^p, +, x.arrays)^(one(_T)/p)::_T
+    end
+end
 
 function LinearAlgebra.dot(x::BlockArray{T}, y::BlockArray{T}) where {T}
     a = zero(T)
@@ -400,7 +406,7 @@ struct BlockArrayStyle <: Broadcast.AbstractArrayStyle{1} end
 Base.BroadcastStyle(::Type{<:BlockArray}) = BlockArrayStyle()
 BlockArrayStyle(::Val{1}) = BlockArrayStyle()
 
-Base.similar(bc::Broadcast.Broadcasted{BlockArrayStyle}, ::Type{T}) where {T} = similar(find_blockarray(bc)::BlockArray{T})
+Base.similar(bc::Broadcast.Broadcasted{BlockArrayStyle}, ::Type{T}) where {T} = similar(find_blockarray(bc), T)
 find_blockarray(bc::Broadcast.Broadcasted) = find_blockarray(bc.args)
 find_blockarray(args::Tuple) = find_blockarray(find_blockarray(args[1]), Base.tail(args))
 find_blockarray(x) = x
