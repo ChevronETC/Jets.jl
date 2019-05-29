@@ -32,7 +32,7 @@ D = JetSpace(Float64,512)
 R = JopRestriction(D,M,randperm(D,32))
 S = JopFft(D)
 t = [0:511;]*6*pi/511
-d = R*(sin.(t)+cos.(t) .+ 2*sin.(8t) .+ 2*cos.(8t))
+d = R*(sin.(t) + cos.(t) + 2*sin.(8*t) + 2*cos.(8*t))
 m = S'*solve!(Spgl1(),d,R∘S',zeros(range(S)))
 ```
 
