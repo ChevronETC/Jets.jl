@@ -370,13 +370,18 @@ Base.similar(A::BlockArray, ::Type{T}) where {T} = BlockArray([similar(A.arrays[
 Base.similar(A::BlockArray{T}) where {T} = similar(A, T)
 
 function LinearAlgebra.norm(x::BlockArray{T}, p::Real=2) where {T}
-    _T = real(T)
     if p == Inf
-        mapreduce(_x->norm(_x,p), max, x.arrays)::_T
+        mapreduce(_x->norm(_x,p), max, x.arrays)
+    elseif p == -Inf
+        mapreduce(_x->norm(_x,p), min, x.arrays)
+    elseif p == 1
+        mapreduce(_x->norm(_x,p), +, x.arrays)
     elseif p == 0
-        mapreduce(_x->norm(_x,p), +, x.arrays)::_T
+        mapreduce(_x->norm(_x,p), +, x.arrays)
     else
-        mapreduce(_x->norm(_x,p)^p, +, x.arrays)^(one(_T)/p)::_T
+        _T = float(real(T))
+        _p = _T(p)
+        mapreduce(_x->norm(_x,p)^_p, +, x.arrays)^(one(_T)/_p)
     end
 end
 
