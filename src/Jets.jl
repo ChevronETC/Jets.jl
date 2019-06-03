@@ -448,7 +448,7 @@ JopBlock(ops::AbstractMatrix{T}; kwargs...) where {T<:Union{JopLn,JopAdjoint}} =
 JopBlock(ops::AbstractMatrix{T}; kwargs...) where {T<:Jop} = JopNl(JetBlock(ops; kwargs...))
 JopBlock(ops::AbstractVector{T}; kwargs...) where {T<:Jop} = JopBlock(reshape(ops, length(ops), 1); kwargs...)
 
-JopZeroBlock(dom::JetSpace, rng::JetSpace) = JopLn(df! = JopZeroBlock_df!, dom = dom, rng = rng)
+JopZeroBlock(dom::JetAbstractSpace, rng::JetAbstractSpace) = JopLn(df! = JopZeroBlock_df!, dom = dom, rng = rng)
 JopZeroBlock_df!(d, m; kwargs...) = d .= 0
 
 Base.iszero(jet::Jet{D,R,typeof(JopZeroBlock_df!)}) where {D<:JetAbstractSpace,R<:JetAbstractSpace} = true
@@ -475,7 +475,7 @@ function JetBlock_f!(d::AbstractArray, m::AbstractArray; ops, dom, rng, kwargs..
     for iblkrow = 1:size(ops, 1)
         _d = getblock(d, iblkrow)
         if size(ops, 2) > 1
-            dtmp = length(dtmp) == length(range(ops[iblkrow,1])) ? reshape(dtmp, range(ops[iblkrow,1])) : zeros(range(ops[iblkrow,1]))
+            dtmp = size(dtmp) == size(range(ops[iblkrow,1])) ? dtmp : zeros(range(ops[iblkrow,1]))
         end
         for iblkcol = 1:size(ops, 2)
             _m = getblock(m, iblkcol)
@@ -497,7 +497,7 @@ function JetBlock_df!(d::AbstractArray, m::AbstractArray; ops, dom, rng, kwargs.
     for iblkrow = 1:size(ops, 1)
         _d = getblock(d, iblkrow)
         if size(ops, 2) > 1
-            dtmp = length(dtmp) == length(range(ops[iblkrow,1])) ? reshape(dtmp, range(ops[iblkrow,1])) : zeros(range(ops[iblkrow,1]))
+            dtmp = size(dtmp) == size(range(ops[iblkrow,1])) ? dtmp : zeros(range(ops[iblkrow,1]))
         end
         for iblkcol = 1:size(ops, 2)
             _m = getblock(m, iblkcol)
@@ -522,7 +522,7 @@ function JetBlock_df′!(m::AbstractArray, d::AbstractArray; ops, dom, rng, kwar
         _m = getblock(m, iblkcol)
         if size(ops, 1) > 1
             _m .= 0
-            mtmp = length(mtmp) == length(domain(ops[1,iblkcol])) ? reshape(mtmp, domain(ops[1,iblkcol])) : zeros(domain(ops[1,iblkcol]))
+            mtmp = size(mtmp) == size(domain(ops[1,iblkcol])) ? mtmp : zeros(domain(ops[1,iblkcol]))
         end
         for iblkrow = 1:size(ops, 1)
             _d = getblock(d, iblkrow)
