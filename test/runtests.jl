@@ -617,3 +617,11 @@ end
     @test J*m ≈ jacobian!(G[1,1],m[1:5])*m[1:5] + jacobian!(G[1,2],m[6:10])*m[6:10] + jacobian!(G[1,3],m[11:15])*m[11:15]
     @test J'*d ≈ [jacobian!(G[1,1],m[1:5])'*d;jacobian!(G[1,2],m[6:10])'*d;jacobian!(G[1,3],m[11:15])'*d]
 end
+
+@testset "scalar multplying an operator" begin
+    A = JopBaz(rand(10,10))
+    a = 3.14
+    m = rand(domain(A))
+    B = a*A
+    @test B*m ≈ a*(A*m)
+end
