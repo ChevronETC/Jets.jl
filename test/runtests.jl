@@ -388,6 +388,46 @@ end
     @test J₄₃₂₁ * δm ≈ L₄₃₂₁ * δm
 end
 
+@testset "sum, linear" begin
+    A₁,A₂,A₃ = map(i->JopBaz(rand(10,10)), 1:3)
+    A₁₂ = A₁ + A₂
+    A₁₂₃ = A₁ + A₂ - A₃
+
+    m = rand(domain(A₁))
+    @test A₁₂ * m ≈ A₁*m + A₂*m
+    @test A₁₂₃ * m ≈ A₁*m + A₂*m - A₃*m
+
+    A₁₂₃ = A₁₂ + A₃
+    @test A₁₂₃ * m ≈ A₁*m + A₂*m + A₃*m
+    A₁₂₃₁₂ = A₁₂₃ - A₁₂
+    @test A₁₂₃₁₂*m ≈ A₁*m + A₂*m + A₃*m - A₁*m - A₂*m
+
+    d = rand(range(A₁))
+    @test A₁₂₃' * d ≈ A₁'*d + A₂'*d + A₃'*d
+end
+
+@testset "sum, linear with matrices" begin
+    A₁,A₃ = map(i->JopBaz(rand(10,10)), 1:3)
+    A₂ = rand(10,10)
+    A₁₂ = A₁ + A₂
+    A₁₂₃ = A₁ + A₂ - A₃
+    m = rand(domain(A₁))
+    @test A₁₂ * m ≈ A₁*m + A₂*m
+    @test A₁₂₃ * m ≈ A₁*m + A₂*m - A₃*m
+end
+
+@testset "sum, linear+nonlinar" begin
+    A₁ = JopBaz(rand(10,10))
+    F₂ = JopBar(10)
+
+    F₁₂ = A₁ + F₂
+    m = rand(domain(F₁₂))
+    @test F₁₂*m ≈ A₁*m + F₂*m
+
+    J₁₂ = jacobian(F₁₂,m)
+    @test J₁₂*m ≈ A₁*m + jacobian(F₂,m)*m
+end
+
 @testset "block arrays" begin
     R = Jets.JetBSpace([JetSpace(Float64,2),JetSpace(Float64,2,2),JetSpace(Float64,2,3)])
     x = ones(R)
