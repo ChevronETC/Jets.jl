@@ -565,6 +565,16 @@ getblock(::Type{JopLn}, A::Jop{T}, i, j) where {T<:Jet{<:JetAbstractSpace,<:JetA
 getblock(A::JopAdjoint{Jet{D,R,typeof(JetBlock_f!)}}, i, j) where {D,R} = JopAdjoint(getindex(A.op, j, i))
 
 #
+# multiply operator by a scalar
+#
+_constdiag_df!(d, m; a, kwargs...) = d .= a * m
+_constdiag_df′!(m, d; a, kwargs...) = m .= conj(a) * d
+function Base.:*(a::Number, A::Jop)
+    _a = JopLn(dom = domain(A), rng = domain(A), df! = _constdiag_df!, df′! = _constdiag_df′!, s=(a=a,))
+    _a ∘ A
+end
+
+#
 # utilities
 #
 function Base.convert(::Type{T}, A::Jop) where {T<:Array}
