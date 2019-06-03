@@ -10,7 +10,7 @@ TODO...
    - block operator has unstable constructor
  * LinearAlgebra has an Adjoint type, can we use it?
  * propagating @inbounds
- * kron, +, -, show
+ * kron
 =#
 
 module Jets
@@ -265,7 +265,7 @@ end
 Base.Array(R::JetSSpace{T,N,F}) where {T,N,F} = SymmetricArray{T,N,F}(Array{T,N}(undef, R.M), R.n, R.map)
 
 #
-# composition
+# composition, f ∘ g
 #
 JetComposite(ops) = Jet(f! = JetComposite_f!, df! = JetComposite_df!, df′! = JetComposite_df′!, dom = domain(ops[end]), rng = range(ops[1]), s = (ops=ops,))
 
@@ -315,6 +315,75 @@ function point!(j::Jet{D,R,typeof(JetComposite_f!)}, mₒ::AbstractArray) where 
         if i > 1
             _m = mul!(zeros(range(ops[i])), ops[i], _m)
         end
+    end
+    j
+end
+
+#
+# Composition, f ± g
+#
+JetSum(ops, sgns) = Jet(f! = JetSum_f!, df! = JetSum_df!, df′! = JetSum_df′!, dom = domain(ops[1]), rng = range(ops[1]), s = (ops=ops, sgns=sgns))
+
+function JetSum_f!(d, m; ops, sgns, kwargs...)
+    d .= 0
+    _d = zeros(range(ops[1]))
+    for i = 1:length(ops)
+        broadcast!(sgns[i], d, d, mul!(_d, ops[i], m))
+    end
+    d
+end
+
+function JetSum_df!(d, m; ops, sgns, kwargs...)
+    d .= 0
+    _d = zeros(range(ops[1]))
+    for i = 1:length(ops)
+        broadcast!(sgns[i], d, d, mul!(_d, JopLn(ops[i]), m))
+    end
+    d
+end
+
+function JetSum_df′!(m, d; ops, sgns, kwargs...)
+    m .= 0
+    _m = zeros(domain(ops[1]))
+    for i = 1:length(ops)
+        broadcast!(sgns[i], m, m, mul!(_m, JopLn(ops[i])', d))
+    end
+    m
+end
+
+jops(op::JopLn{J}) where {D,R,J<:Jet{D,R,typeof(JetSum_f!)}} = state(jet(op)).ops
+jops(op::JopNl{J}) where {D,R,J<:Jet{D,R,typeof(JetSum_f!)}} = state(jet(op)).ops
+
+function jops(op::JopAdjoint{J,T}) where {D,R,J<:Jet{D,R,typeof(JetSum_f!)},T<:JopLn{J}}
+    ops = state(op.op).ops
+    n = length(ops)
+    ntuple(i->JopAdjoint(ops[i]), n)
+end
+
+function flipsgn(sgn, sgnnew)
+    typeof(sgnnew) == typeof(+) && (return sgn)
+    typeof(sgnnew) == typeof(-) && typeof(sgn) == typeof(-) && (return +)
+    typeof(sgnnew) == typeof(-) && typeof(sgn) == typeof(+) && (return -)
+end
+
+sgns(op::Jop, r) = (r,)
+sgns(op::JopLn{J}, r) where {D,R,J<:Jet{D,R,typeof(JetSum_f!)}} = ntuple(i->flipsgn(state(op).sgns[i],r), length(state(op).sgns))
+sgns(op::JopNl{J}, r) where {D,R,J<:Jet{D,R,typeof(JetSum_f!)}} = ntuple(i->flipsgn(state(op).sgns[i],r), length(state(op).sgns))
+sgns(op::JopAdjoint{J,T}, r) where {D,R,J<:Jet{D,R,typeof(JetSum_f!)},T<:JopLn{J}} = ntuple(i->flipsgn(state(op).sgns[i],r), length(state(op.op).sgns))
+
+Base.:+(A₂::Union{JopAdjoint,JopLn}, A₁::Union{JopAdjoint,JopLn}) = JopLn(JetSum((jops(A₂)..., jops(A₁)...), (sgns(A₂,+)..., sgns(A₁,+)...)))
+Base.:+(A₂::Jop, A₁::Jop) = JopNl(JetSum((jops(A₂)..., jops(A₁)...), (sgns(A₂,+)..., sgns(A₁,+)...)))
+Base.:-(A₂::Union{JopAdjoint,JopLn}, A₁::Union{JopAdjoint,JopLn}) = JopLn(JetSum((jops(A₂)..., jops(A₁)...), (sgns(A₂,+)..., sgns(A₁,-)...)))
+Base.:-(A₂::Jop, A₁::Jop) = JopNl(JetSum((jops(A₂)..., jops(A₁)...), (sgns(A₂,+)..., sgns(A₁,-)...)))
+
+Base.:+(A₂::Jop, A₁::AbstractMatrix) = A₂ + JopLn(;dom = domain(A₁), rng = range(A₁), df! = _matmul_df!, df′! = _matmul_df′!, s=(A=A₁,))
+Base.:+(A₂::AbstractMatrix, A₁::Jop) = JopLn(;dom = domain(A₂), rng = range(A₂), df! = _matmul_df!, df′! = _matmul_df′!, s=(A=A₂,)) + A₁
+Base.:-(A₂::Jop, A₁::AbstractMatrix) = A₂ - JopLn(;dom = domain(A₁), rng = range(A₁), df! = _matmul_df!, df′! = _matmul_df′!, s=(A=A₁,))
+Base.:-(A₂::AbstractMatrix, A₁::Jop) = JopLn(;dom = domain(A₂), rng = range(A₂), df! = _matmul_df!, df′! = _matmul_df′!, s=(A=A₂,)) - A₁
+
+function point!(j::Jet{D,R,typeof(JetSum_f!)}, mₒ::AbstractArray) where {D<:JetAbstractSpace,R<:JetAbstractSpace}
+    for op in state(j).ops
+        point!(jet(op), mₒ)
     end
     j
 end
