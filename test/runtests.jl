@@ -553,6 +553,11 @@ end
     K = convert(Array, L)
 
     @test L*δm ≈ K*δm
+
+    _J₁₂ = getblock(J, 1, 2)
+    @test isa(J₁₂, JopLn)
+    δm = rand(domain(J₁₂))
+    @test J₁₂*δm ≈ _J₁₂*δm
 end
 
 @testset begin "block operator with keyword arguments"
