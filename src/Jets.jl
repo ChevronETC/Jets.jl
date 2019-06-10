@@ -623,13 +623,13 @@ end
 
 nblocks(jet::Jet) = (nblocks(range(jet)), nblocks(domain(jet)))
 nblocks(jet::Jet, i) = i == 1 ? nblocks(range(jet)) : nblocks(domain(jet))
-nblocks(A::Jop) = nblocks(jet(A))
-nblocks(A::Jop, i) = nblocks(jet(A), i)
+nblocks(A::Jop) = (nblocks(range(A)), nblocks(domain(A)))
+nblocks(A::Jop, i) = i == 1 ? nblocks(range(A)) : nblocks(domain(A))
 
 getblock(jet::Jet{D,R,typeof(JetBlock_f!)}, i, j) where {D,R} = state(jet).ops[i,j]
 getblock(A::JopLn{T}, i, j) where {T<:Jet{<:JetAbstractSpace,<:JetAbstractSpace,typeof(JetBlock_f!)}} = JopLn(getblock(jet(A), i, j))
 getblock(A::JopNl{T}, i, j) where {T<:Jet{<:JetAbstractSpace,<:JetAbstractSpace,typeof(JetBlock_f!)}} = getblock(jet(A), i, j)
-getblock(A::JopAdjoint{Jet{D,R,typeof(JetBlock_f!)}}, i, j) where {D,R} = JopAdjoint(getindex(A.op, j, i))
+getblock(A::T, i, j) where {J<:Jet{<:JetAbstractSpace,<:JetAbstractSpace,typeof(JetBlock_f!)},T<:JopAdjoint{J}} = getblock(A.op, j, i)'
 getblock(::Type{JopNl}, A::Jop{T}, i, j) where {T<:Jet{<:JetAbstractSpace,<:JetAbstractSpace,typeof(JetBlock_f!)}} = getblock(jet(A), i, j)::JopNl
 getblock(::Type{JopLn}, A::Jop{T}, i, j) where {T<:Jet{<:JetAbstractSpace,<:JetAbstractSpace,typeof(JetBlock_f!)}} = JopLn(getblock(jet(A), i, j))
 

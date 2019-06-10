@@ -623,6 +623,35 @@ end
     @test J'*d ≈ [jacobian!(G[1,1],m[1:5])'*d;jacobian!(G[1,2],m[6:10])'*d;jacobian!(G[1,3],m[11:15])'*d]
 end
 
+@testset "getblock, adjoint operator" begin
+    B = [JopBaz(rand(5,5)) for i=1:2, j=1:3]
+    A = @blockop B
+    C = A'
+
+    for i = 1:2, j = 1:3
+        Cji = getblock(C, j, i)
+        @test isa(Cji, JopAdjoint)
+        @test state(Cji).A ≈ state(B[i,j]).A
+        m = rand(domain(Cji))
+        @test Cji*m ≈ B[i,j]'*m
+    end
+
+    B = [JopBaz(rand(5,5))' for i=1:2, j=1:3]
+    A = @blockop B
+    C = A'
+
+    C11 = getblock(C,1,1)
+    isa(C11,JopLn)
+
+    for i = 1:2, j=1:3
+        Cji = getblock(C, j, i)
+        @test isa(Cji, JopLn)
+        @test state(Cji).A ≈ state(B[i,j]).A
+        m = rand(domain(Cji))
+        @test Cji*m ≈ B[i,j]'*m
+    end
+end
+
 @testset "scalar multplying an operator" begin
     A = JopBaz(rand(10,10))
     a = 3.14
