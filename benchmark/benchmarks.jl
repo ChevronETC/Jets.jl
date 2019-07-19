@@ -111,6 +111,12 @@ SUITE["Block, homogeneous"]["block"] = @benchmarkable getblock($m, 2)
 SUITE["Block, homogeneous"]["block!"] = @benchmarkable setblock!($m, 2, $(rand(100)))
 SUITE["Block, homogeneous"]["broadcast"] = @benchmarkable f .= d .+ e
 SUITE["Block, homogeneous"]["broadcast (base-case)"] = @benchmarkable f′ .= d′ .+ e′
+SUITE["Block, homogeneous"]["dot"] = @benchmarkable dot($d, $e)
+SUITE["Block, homogeneous"]["dot (base-case)"] = @benchmarkable dot($d′, $e′)
+SUITE["Block, homogeneous"]["norm"] = @benchmarkable norm($d)
+SUITE["Block, homogeneous"]["norm (base-case)"] = @benchmarkable norm($d′)
+SUITE["Block, homogeneous"]["extrema"] = @benchmarkable extrema($d)
+SUITE["Block, homogeneous"]["extrema (base-case)"] = @benchmarkable extrema($d′)
 
 x = rand(100)
 _F = [JopBar(100) JopFoo(x) JopBar(100) ; JopBar(100) JopFoo(x) JopBar(100)]

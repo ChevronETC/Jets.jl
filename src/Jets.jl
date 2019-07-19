@@ -473,6 +473,16 @@ function Base.convert(::Type{Array}, x::BlockArray{T}) where {T}
     end
     _x
 end
+
+function Base.extrema(x::BlockArray{T}) where {T}
+    mn,mx = extrema(x.arrays[1])
+    for i = 2:length(x.arrays)
+        _mn, _mx = extrema(x.arrays[i])
+        _mn < mn && (mn = _mn)
+        _mx > mx && (mx = _mx)
+    end
+    mn,mx
+end
 # -->
 
 # BlockArray broadcasting implementation --<

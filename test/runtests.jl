@@ -444,6 +444,13 @@ end
     @test norm(x,0) ≈ norm(_x,0)
     @test norm(x,Inf) ≈ norm(_x,Inf)
 
+    x = rand(R)
+    _x = convert(Array, x)
+    mn,mx = extrema(x)
+    _mn,_mx = extrema(_x)
+    @test mn ≈ _mn
+    @test mx ≈ _mx
+
     R = Jets.JetBSpace([JetSpace(ComplexF64,2),JetSpace(ComplexF64,2,2),JetSpace(ComplexF64,2,3)])
     x = rand(R)
     _x = convert(Array, x)
