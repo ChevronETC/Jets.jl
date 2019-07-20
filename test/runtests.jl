@@ -5,6 +5,7 @@ function JopFoo(diag)
     spc = JetSpace(Float64, length(diag))
     JopLn(;df! = JopFoo_df!, dom = spc, rng = spc, s = (diagonal=diag,))
 end
+Jets.perfstat(J::Jet{D,R,typeof(JopFoo_df!)}) where {D,R} = Float64(π)
 
 JopBar_f!(d,m;kwargs...) = d .= m.^2
 JopBar_df!(δd,δm;mₒ,kwargs...) = δd .= 2 .* mₒ .* δm
@@ -658,4 +659,17 @@ end
     m = rand(domain(A))
     B = a*A
     @test B*m ≈ a*(A*m)
+end
+
+@testset "perfstat" begin
+    A₁ = JopFoo(rand(2))
+    A₂ = JopBar(2)
+    A = A₂ ∘ A₁
+
+    @test perfstat(A₁) ≈ Float64(π)
+    @test perfstat(A₂) == nothing
+    @test perfstat(A) ≈ Float64(π)
+
+    B = A₂ + A₁
+    @test perfstat(B) ≈ Float64(π)
 end

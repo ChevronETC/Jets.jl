@@ -112,7 +112,7 @@ Base.range(jet::Jet) = jet.rng
 Base.eltype(jet::Jet) = promote_type(eltype(domain(jet)), eltype(range(jet)))
 state(jet::Jet) = jet.s
 state!(jet, s) = begin jet.s = merge(jet.s, s); jet end
-perfstat(jet::T) where {D,R,F<:Function,T<:Jet{D,R,F}} = Dict()
+perfstat(jet::T) where {D,R,F<:Function,T<:Jet{D,R,F}} = nothing
 point(jet::Jet) = jet.mₒ
 Base.close(jet::Jet) = finalize(jet)
 
@@ -319,6 +319,16 @@ function point!(j::Jet{D,R,typeof(JetComposite_f!)}, mₒ::AbstractArray) where 
     j
 end
 
+function perfstat(j::Jet{D,R,typeof(JetComposite_f!)}) where {D,R}
+    ops = state(j).ops
+    s = nothing
+    for op in ops
+        s = perfstat(op)
+        s == nothing || break
+    end
+    s
+end
+
 #
 # Composition, f ± g
 #
@@ -386,6 +396,16 @@ function point!(j::Jet{D,R,typeof(JetSum_f!)}, mₒ::AbstractArray) where {D<:Je
         point!(jet(op), mₒ)
     end
     j
+end
+
+function perfstat(j::Jet{D,R,typeof(JetSum_f!)}) where {D,R}
+    ops = state(j).ops
+    s = nothing
+    for op in ops
+        s = perfstat(op)
+        s == nothing || break
+    end
+    s
 end
 
 #
