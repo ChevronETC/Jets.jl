@@ -407,6 +407,25 @@ end
     @test A₁₂₃' * d ≈ A₁'*d + A₂'*d + A₃'*d
 end
 
+@testset "sum, linear with compositions" begin
+    A₁,A₂,A₃ = map(i->JopBaz(rand(10,10)), 1:3)
+    a₁,a₂,a₃ = map(i->rand(), 1:3)
+    A₁₂ = a₁*A₁ + a₂*A₂
+    A₁₂₃ = a₁*A₁ + a₂*A₂ - a₃*A₃
+
+    m = rand(domain(A₁))
+    @test A₁₂ * m ≈ a₁*(A₁*m) + a₂*(A₂*m)
+    @test A₁₂₃ * m ≈ a₁*(A₁*m) + a₂*(A₂*m) - a₃*(A₃*m)
+
+    A₁₂₃ = A₁₂ + a₃*A₃
+    @test A₁₂₃ * m ≈ a₁*(A₁*m) + a₂*(A₂*m) + a₃*(A₃*m)
+    A₁₂₃₁₂ = A₁₂₃ - A₁₂
+    @test A₁₂₃₁₂*m ≈ a₁*(A₁*m) + a₂*(A₂*m) + a₃*(A₃*m) - a₁*(A₁*m) - a₂*(A₂*m)
+
+    d = rand(range(A₁))
+    @test A₁₂₃' * d ≈ a₁*(A₁'*d) + a₂*(A₂'*d) + a₃*(A₃'*d)
+end
+
 @testset "sum, linear with matrices" begin
     A₁,A₃ = map(i->JopBaz(rand(10,10)), 1:3)
     A₂ = rand(10,10)

@@ -287,18 +287,18 @@ function JetComposite_df′!(m::T, d; ops, kwargs...) where {T<:AbstractArray}
     m::T
 end
 
-jops(op::Jop) = (op,)
-jops(op::JopLn{J}) where {D,R,J<:Jet{D,R,typeof(JetComposite_f!)}} = state(jet(op)).ops
-jops(op::JopNl{J}) where {D,R,J<:Jet{D,R,typeof(JetComposite_f!)}} = state(jet(op)).ops
+jops_comp(op::Jop) = (op,)
+jops_comp(op::JopLn{J}) where {D,R,J<:Jet{D,R,typeof(JetComposite_f!)}} = state(jet(op)).ops
+jops_comp(op::JopNl{J}) where {D,R,J<:Jet{D,R,typeof(JetComposite_f!)}} = state(jet(op)).ops
 
-function jops(op::JopAdjoint{J,T}) where {D,R,J<:Jet{D,R,typeof(JetComposite_f!)},T<:JopLn{J}}
+function jops_comp(op::JopAdjoint{J,T}) where {D,R,J<:Jet{D,R,typeof(JetComposite_f!)},T<:JopLn{J}}
     ops = state(op.op).ops
     n = length(ops)
     ntuple(i->JopAdjoint(ops[n-i+1]), n)
 end
 
-Base.:∘(A₂::Union{JopAdjoint,JopLn}, A₁::Union{JopAdjoint,JopLn}) = JopLn(JetComposite((jops(A₂)..., jops(A₁)...)))
-Base.:∘(A₂::Jop, A₁::Jop) = JopNl(JetComposite((jops(A₂)..., jops(A₁)...)))
+Base.:∘(A₂::Union{JopAdjoint,JopLn}, A₁::Union{JopAdjoint,JopLn}) = JopLn(JetComposite((jops_comp(A₂)..., jops_comp(A₁)...)))
+Base.:∘(A₂::Jop, A₁::Jop) = JopNl(JetComposite((jops_comp(A₂)..., jops_comp(A₁)...)))
 Base.:∘(A₂::AbstractMatrix, A₁::AbstractMatrix) = A₂*A₁
 
 _matmul_df!(d, m; A, kwargs...) = mul!(d, A, m)
@@ -361,10 +361,11 @@ function JetSum_df′!(m, d; ops, sgns, kwargs...)
     m
 end
 
-jops(op::JopLn{J}) where {D,R,J<:Jet{D,R,typeof(JetSum_f!)}} = state(jet(op)).ops
-jops(op::JopNl{J}) where {D,R,J<:Jet{D,R,typeof(JetSum_f!)}} = state(jet(op)).ops
+jops_sum(op::Jop) = (op,)
+jops_sum(op::JopLn{J}) where {D,R,J<:Jet{D,R,typeof(JetSum_f!)}} = state(jet(op)).ops
+jops_sum(op::JopNl{J}) where {D,R,J<:Jet{D,R,typeof(JetSum_f!)}} = state(jet(op)).ops
 
-function jops(op::JopAdjoint{J,T}) where {D,R,J<:Jet{D,R,typeof(JetSum_f!)},T<:JopLn{J}}
+function jops_sum(op::JopAdjoint{J,T}) where {D,R,J<:Jet{D,R,typeof(JetSum_f!)},T<:JopLn{J}}
     ops = state(op.op).ops
     n = length(ops)
     ntuple(i->JopAdjoint(ops[i]), n)
@@ -381,10 +382,10 @@ sgns(op::JopLn{J}, r) where {D,R,J<:Jet{D,R,typeof(JetSum_f!)}} = ntuple(i->flip
 sgns(op::JopNl{J}, r) where {D,R,J<:Jet{D,R,typeof(JetSum_f!)}} = ntuple(i->flipsgn(state(op).sgns[i],r), length(state(op).sgns))
 sgns(op::JopAdjoint{J,T}, r) where {D,R,J<:Jet{D,R,typeof(JetSum_f!)},T<:JopLn{J}} = ntuple(i->flipsgn(state(op).sgns[i],r), length(state(op.op).sgns))
 
-Base.:+(A₂::Union{JopAdjoint,JopLn}, A₁::Union{JopAdjoint,JopLn}) = JopLn(JetSum((jops(A₂)..., jops(A₁)...), (sgns(A₂,+)..., sgns(A₁,+)...)))
-Base.:+(A₂::Jop, A₁::Jop) = JopNl(JetSum((jops(A₂)..., jops(A₁)...), (sgns(A₂,+)..., sgns(A₁,+)...)))
-Base.:-(A₂::Union{JopAdjoint,JopLn}, A₁::Union{JopAdjoint,JopLn}) = JopLn(JetSum((jops(A₂)..., jops(A₁)...), (sgns(A₂,+)..., sgns(A₁,-)...)))
-Base.:-(A₂::Jop, A₁::Jop) = JopNl(JetSum((jops(A₂)..., jops(A₁)...), (sgns(A₂,+)..., sgns(A₁,-)...)))
+Base.:+(A₂::Union{JopAdjoint,JopLn}, A₁::Union{JopAdjoint,JopLn}) = JopLn(JetSum((jops_sum(A₂)..., jops_sum(A₁)...), (sgns(A₂,+)..., sgns(A₁,+)...)))
+Base.:+(A₂::Jop, A₁::Jop) = JopNl(JetSum((jops_sum(A₂)..., jops_sum(A₁)...), (sgns(A₂,+)..., sgns(A₁,+)...)))
+Base.:-(A₂::Union{JopAdjoint,JopLn}, A₁::Union{JopAdjoint,JopLn}) = JopLn(JetSum((jops_sum(A₂)..., jops_sum(A₁)...), (sgns(A₂,+)..., sgns(A₁,-)...)))
+Base.:-(A₂::Jop, A₁::Jop) = JopNl(JetSum((jops_sum(A₂)..., jops_sum(A₁)...), (sgns(A₂,+)..., sgns(A₁,-)...)))
 
 Base.:+(A₂::Jop, A₁::AbstractMatrix) = A₂ + JopLn(;dom = domain(A₁), rng = range(A₁), df! = _matmul_df!, df′! = _matmul_df′!, s=(A=A₁,))
 Base.:+(A₂::AbstractMatrix, A₁::Jop) = JopLn(;dom = domain(A₂), rng = range(A₂), df! = _matmul_df!, df′! = _matmul_df′!, s=(A=A₂,)) + A₁
