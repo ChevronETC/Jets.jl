@@ -544,14 +544,14 @@ for f in (:Array, :ones, :rand, :zeros)
     @eval (Base.$f)(R::JetBSpace{T,S}) where {T,S<:JetAbstractSpace} = BlockArray([($f)(space(R, i)) for i=1:length(R.spaces)], R.indices)
 end
 
-function JetBlock(ops::AbstractMatrix{T}; kwargs...) where {T<:Jop}
-    dom = size(ops,2) == 1 ? domain(ops[1,1]) : JetBSpace([domain(ops[1,i]) for i=1:size(ops,2)])
+function JetBlock(ops::AbstractMatrix{T}, dadom=false; kwargs...) where {T<:Jop}
+    dom = (size(ops,2) == 1 && !dadom) ? domain(ops[1,1]) : JetBSpace([domain(ops[1,i]) for i=1:size(ops,2)])
     rng = JetBSpace([range(ops[i,1]) for i=1:size(ops,1)])
     Jet(f! = JetBlock_f!, df! = JetBlock_df!, df′! = JetBlock_df′!, dom = dom, rng = rng, s = (ops=ops,dom=dom,rng=rng))
 end
-JopBlock(ops::AbstractMatrix{T}; kwargs...) where {T<:Union{JopLn,JopAdjoint}} = JopLn(JetBlock(ops; kwargs...))
-JopBlock(ops::AbstractMatrix{T}; kwargs...) where {T<:Jop} = JopNl(JetBlock(ops; kwargs...))
-JopBlock(ops::AbstractVector{T}; kwargs...) where {T<:Jop} = JopBlock(reshape(ops, length(ops), 1); kwargs...)
+JopBlock(ops::AbstractMatrix{T}, dadom=false; kwargs...) where {T<:Union{JopLn,JopAdjoint}} = JopLn(JetBlock(ops, dadom; kwargs...))
+JopBlock(ops::AbstractMatrix{T}, dadom=false; kwargs...) where {T<:Jop} = JopNl(JetBlock(ops, dadom; kwargs...))
+JopBlock(ops::AbstractVector{T}, dadom=false; kwargs...) where {T<:Jop} = JopBlock(reshape(ops, length(ops), 1), dadom; kwargs...)
 
 JopZeroBlock(dom::JetAbstractSpace, rng::JetAbstractSpace) = JopLn(df! = JopZeroBlock_df!, dom = dom, rng = rng)
 JopZeroBlock_df!(d, m; kwargs...) = d .= 0
