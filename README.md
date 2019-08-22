@@ -132,7 +132,7 @@ jet = Jet(dom = JetSpace(Float64,128), rng = JetSpace(Float64,128), f! = foo!, d
 ## Linear and nonlinear operators
 A jet can be wrapped into nonlinear and linear operators.  Continuing from the `jet` defined
 in the previous section, we first consider a linear operator:
-```
+```julia
 A = JopLn(jet, rand(domain(A)) # A is a linear operator linearized about a random point in its domain
 m = rand(domain(A)) # m is a vector in the domain of A
 d = A*m # d is a vector in the range of A, computed via the dfoo! method
@@ -142,7 +142,7 @@ mul!(a, A', d) # equivalent in-place version of the previous line
 ```
 
 Next, we consider a non-linear operator:
-```
+```julia
 F = JopNl(jet) # F is a nonlinear operator
 m = rand(domain(A))
 d = F*m # d is a vector in the range of A, computed via the foo! method
