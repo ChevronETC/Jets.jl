@@ -14,12 +14,12 @@ based on its mathematical namesake
 describes a function and its linearization at some point in its domain.
 
 ## Companion packages
-* DistributedJets - https://chevron.visualstudio.com/ETC-ESD-Incubator/DistributedJets
-* JetPack - https://chevron.visualstudio.com/ETC-ESD-Incubator/JetPack
-* JetPackDSP - http://chevron.visualstudio.com/ETC-ESD-Incubator/JetPackDSP
-* JetPackTransforms - https://chevron.visualstudio.com/ETC-ESD-Incubator/JetPackTransforms
-* JetPackWave - https://chevron.visualstudio.com/ETC-ESD-Incubator/JetPackWave
-* Solvers - https://chevron.visualstudio.com/ETC-ESD-Incubator/Solvers
+* DistributedJets - https://chevron.visualstudio.com/ETC-ESD-SR-Incubator/DistributedJets
+* JetPack - https://chevron.visualstudio.com/ETC-ESD-SR-Incubator/JetPack
+* JetPackDSP - http://chevron.visualstudio.com/ETC-ESD-SR-Incubator/JetPackDSP
+* JetPackTransforms - https://chevron.visualstudio.com/ETC-ESD-SR-Incubator/JetPackTransforms
+* JetPackWave - https://chevron.visualstudio.com/ETC-ESD-SR-Incubator/JetPackWave
+* Solvers - https://chevron.visualstudio.com/ETC-ESD-SR-Incubator/Solvers
 
 ## Quick start example
 Use SPGL1 in for data reconstruction
