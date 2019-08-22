@@ -1,25 +1,25 @@
 # Jets
 
 Jets is a Julia library for matrix-free linear algebra similar to SPOT
-(http://www.cs.ubc.ca/labs/scl/spot/) in Matlab and RVL
-(http://www.trip.caam.rice.edu/software/rvl/rvl/doc/html) and Chevron's JLinAlg
-in Java.  In addition, Jets is meant as a replacement for Jot
-(https://chevron.visualstudio.com/ETC-ESD-Jot).  The purpose is to proved
+(http://www.cs.ubc.ca/labs/scl/spot/) in Matlab, RVL
+(http://www.trip.caam.rice.edu/software/rvl/rvl/doc/html) in C++, and Chevron's JLinAlg
+in Java.  In addition, Jets is a successor to Jot
+(https://chevron.visualstudio.com/ETC-ESD-Jot).  The purpose of Jets is to provide
 familiar matrix-vector syntax without forming matrices.  Instead, the action of
 the matrix and its adjoint applied to vectors is specified using Julia methods.
 In addition, Jets provides a framework for nonlinear functions and their
 linearization.  The main construct in this package is a `jet` and is loosely
 based on its mathematical namesake
 (https://en.wikipedia.org/wiki/Jet_(mathematics)).  In particular, a `jet`
-describes a function and its linearization at some point of its domain.
+describes a function and its linearization at some point in its domain.
 
 ## Companion packages
-* DistributedJets - https://chevron.visualstudio.com/ETC-ESD-DistributedJets
-* JetPack - https://chevron.visualstudio.com/ETC-ESD-JetPack
-* JetPackDSP - http://chevron.visualstudio.com/ETC-ESD-JetPackDSP
-* JetPackTransforms - https://chevron.visualstudio.com/ETC-ESD-JetPackTransforms
-* JetPackWave - https://chevron.visualstudio.com/ETC-ESD-JetPackWave
-* Solvers - https://chevron.visualstudio.com/ETC-ESD-Solvers
+* DistributedJets - https://chevron.visualstudio.com/ETC-ESD-Incubator/DistributedJets
+* JetPack - https://chevron.visualstudio.com/ETC-ESD-Incubator/JetPack
+* JetPackDSP - http://chevron.visualstudio.com/ETC-ESD-Incubator/JetPackDSP
+* JetPackTransforms - https://chevron.visualstudio.com/ETC-ESD-Incubator/JetPackTransforms
+* JetPackWave - https://chevron.visualstudio.com/ETC-ESD-Incubator/JetPackWave
+* Solvers - https://chevron.visualstudio.com/ETC-ESD-Incubator/Solvers
 
 ## Quick start example
 Use SPGL1 in for data reconstruction
@@ -64,10 +64,18 @@ x₃ = rand(R₃) # x₃ will be a 3 dimensional array of size (10,20,2) and typ
 ```
 
 ### JetSSpace
-There are jets that lead to symmetries in its domain/range and that can be sued for increased computational efficiency.  For example, the Fourier transform of a real vector is symmetric.  `JetSSpace` is used to construct an array that include extra information about these symmetries.  In general, jets that have symmetric spaces should provide a method `symspace` for the construction of its symmetric space.
+There are jets that lead to symmetries in their domain/range and that can be sued for increased computational efficiency.  For example, the Fourier transform of a real vector is symmetric.  `JetSSpace` is used to construct an array that include extra information about these symmetries.  In general, jets that have symmetric spaces should provide a method `symspace` for the construction of its symmetric space.  For example:
+```
+using Pkg
+Pkg.add("Jets","JetPackFft")
+A = JopFft(JetSpace(Float64,128))
+R = range(A) # the range of A is a symmetric space R<:JetSSpace
+```
 
 ### JetBSpace
-Jets provides a block jet with domain and ranges that can be thought of as block vectors.  The domain/range of a block jet is a `JetBSpace`.  For more information, please see the block jet documentation, below.
+Jets provides a block jet that is analagous to a block matrix.  The domain and range associated with a block jet
+is a `JetBSpace`, and a `JetBSpace` keeps track of this structure.  For more information, please see the block
+jet documentation, below.
 
 ### Convenience methods for Jet vector spaces
 Jets provides the following convenience methods for all types of Jet Vector space `R::JetAbstractSpace`:
@@ -84,7 +92,7 @@ Array(R) # uninitialized array with the element-type and size of `R`
 ```
 
 ## Jets
-A jet `J` of type `Jet` is the main construct in this package.  It can be used on its own; but is more often mapped to a linear or nonlinear operators which are described in the following two sections.  We associate the following methods with `jet::Jet`:
+A jet `jet<:Jet` is the main construct in this package.  It can be used on its own; but is more often wrapped in a linear or nonlinear operators which will be discussed shortly.  We associate the following methods with `jet::Jet`:
 ```julia
 f!(d, jet, m; kwargs...) # function map from domain to range
 df!(d, jet, m; kwargs...) # linearized function map from domain to range
@@ -104,10 +112,50 @@ close(jet) # closing a jet makes an explicit call to its finalizers
 ```
 Note that the `f!`, `df!` and `df′!` methods are not exported.
 
-## Linear operators
+For example, we can create a jet for the function `f(x)=x^a`:
+```julia
+using Pkg
+Pkg.add("Jets")
+foo!(d, m; a, kwargs...) = d .= x.^a
+dfoo!(δd, δm; mₒ, a, kwargs...) = δd .= a * mₒ.^(a-1) .* δm
+jet = Jet(dom = JetSpace(Float64,128), rng = JetSpace(Float64,128), f! = foo!, df! = dfoo!, s=(a=1.0,))
+```
+In the above construction, we define the domain (`dom`), range (`rng`), function (`f!`) and its
+linearization (`df!`) for the jet.  Notice that construction of the jet uses Julia's named
+arguments.  Finally, we note that for this specific example, the construction does not specify
+the adjoint of the lineariziation.  This is because for this specific case the linearization is
+self-adjoint.  An equivalent construction that includes the adjoint is:
+```julia
+jet = Jet(dom = JetSpace(Float64,128), rng = JetSpace(Float64,128), f! = foo!, df! = dfoo!, df′! = dfoo!, s=(a=1.0,))
+```
+
+## Linear and nonlinear operators
+A jet can be wrapped into nonlinear and linear operators.  Continuing from the `jet` defined
+in the previous section, we first consider a linear operator:
+```
+A = JopLn(jet, rand(domain(A)) # A is a linear operator linearized about a random point in its domain
+m = rand(domain(A)) # m is a vector in the domain of A
+d = A*m # d is a vector in the range of A, computed via the dfoo! method
+mul!(d, A, m) # equivalent in-place version of the previous line
+a = A'*d # a is a vector in the domain of A, computed via the dfoo! method (remember that A is self-adjoint for this example)
+mul!(a, A', d) # equivalent in-place version of the previous line
+```
+
+Next, we consider a non-linear operator:
+```
+F = JopNl(jet) # F is a nonlinear operator
+m = rand(domain(A))
+d = F*m # d is a vector in the range of A, computed via the foo! method
+mul!(d, F, m) # equivalent in-place version of the prvious line
+A = jacobian(F, rand(domain(A)) # A is the Jacobian of F and is a linear operator representation of the jet
+```
+
+## Operator compositions
+
+## Block operators, block spaces and block vectors
 
 ## Differences from Jot
-Three new Julia language features that we take advantage of:
+Several new Julia language features that we take advantage of:
 1. The Julia abstract array interface.
 2. The Julia broadcasting and fused broadcasting feature
 3. Named tuples
