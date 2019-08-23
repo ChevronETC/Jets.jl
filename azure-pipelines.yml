@@ -5,6 +5,18 @@ variables:
   - group: Jets
 
 steps:
+- task: DownloadSecureFile@1
+  inputs:
+    secureFile: id_rsa
+
+- task: DownloadSecureFile@1
+  inputs:
+    secureFile: id_rsa.pub
+
+- task: DownloadSecureFile@1
+  inputs:
+    secureFile: known_hosts
+
 - script: |
     mkdir ~/.ssh
     cp $(Agent.TempDirectory)/id_rsa ~/.ssh/id_rsa
