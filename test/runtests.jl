@@ -22,6 +22,12 @@ function JopBaz(A)
     JopLn(;df! = JopBaz_df!, df′! = JopBaz_df′!, dom = dom, rng = rng, s = (A=A,))
 end
 
+JopFooBar_df!(d,m;A,kwargs...) =  d .= A.*m
+function JopFooBar(n)
+    spc = JetSpace(Float64,n,n)
+    JopLn(df! = JopFooBar_df!, dom = spc, rng = spc, s= (A=rand(n,n),))
+end
+
 JopRosenbrock_f!(d,m;kwargs...) = d.= [1-m[1], 10*(m[2]-m[1]^2)]
 JopRosenbrock_df!(d,m;J,kwargs...) = d .= J*m
 JopRosenbrock_df′!(m,d;J,kwargs...) = m .= J'*d
@@ -124,6 +130,9 @@ end
     @test range(A) == JetSpace(Float64,10)
     @test eltype(A) == Float64
     @test convert(Array, A) ≈ diagm(0=>diag)
+
+    B = JopFooBar(5)
+    @test convert(Array, B) ≈ diagm(0=>vec(state(B).A))
 end
 
 @testset "nonlinear operator" begin

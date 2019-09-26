@@ -685,7 +685,7 @@ function Base.convert(::Type{T}, A::Jop) where {T<:Array}
         m .= 0
         d .= 0
         m[icol] = 1
-        B[:,icol] .= mul!(d, A, m)
+        B[:,icol] .= mul!(d, A, m)[:]
     end
     B
 end
