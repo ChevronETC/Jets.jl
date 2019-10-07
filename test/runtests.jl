@@ -519,11 +519,18 @@ end
     z .= x
     @test typeof(z) == Array{Float64,1}
     @test z ≈ x
-
     x .= 3.14
     for i = 1:length(x)
         @test x[i] ≈ 3.14
     end
+
+    x = rand(Int32, size(R))
+    y = rand(R)
+    z = x .* y
+    @test isa(z, Jets.BlockArray)
+    @test convert(Array, z) ≈ x .* convert(Array, y)
+
+    x = similar(y, Int)
 end
 
 @testset "block operator" begin
