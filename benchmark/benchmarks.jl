@@ -111,6 +111,8 @@ SUITE["Block, homogeneous"]["block"] = @benchmarkable getblock($m, 2)
 SUITE["Block, homogeneous"]["block!"] = @benchmarkable setblock!($m, 2, $(rand(100)))
 SUITE["Block, homogeneous"]["broadcast"] = @benchmarkable f .= d .+ e
 SUITE["Block, homogeneous"]["broadcast (base-case)"] = @benchmarkable f′ .= d′ .+ e′
+SUITE["Block, homogeneous"]["fill!"] = @benchmarkable f .= $(rand())
+SUITE["Block, homogeneous"]["fill! (base-case)"] = @benchmarkable f′ .= $(rand())
 SUITE["Block, homogeneous"]["dot"] = @benchmarkable dot($d, $e)
 SUITE["Block, homogeneous"]["dot (base-case)"] = @benchmarkable dot($d′, $e′)
 SUITE["Block, homogeneous"]["norm"] = @benchmarkable norm($d)
@@ -146,5 +148,7 @@ SUITE["Block, heterogeneous"]["block"] = @benchmarkable getblock($m, 2)
 SUITE["Block, heterogeneous"]["block!"] = @benchmarkable setblock!($d, 2, $(rand(100)))
 SUITE["Block, heterogeneous"]["broadcast"] = @benchmarkable f .= d .+ e
 SUITE["Block, heterogeneous"]["broadcast (base-case)"] = @benchmarkable f′ .= d′ .+ e′
+SUITE["Block, heterogeneous"]["fill!"] = @benchmarkable f .= $(rand())
+SUITE["Block, heterogeneous"]["fill! (base-case)"] = @benchmarkable f′ .= $(rand())
 
 SUITE
