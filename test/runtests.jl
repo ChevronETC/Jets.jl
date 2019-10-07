@@ -519,6 +519,11 @@ end
     z .= x
     @test typeof(z) == Array{Float64,1}
     @test z ≈ x
+
+    x .= 3.14
+    for i = 1:length(x)
+        @test x[i] ≈ 3.14
+    end
 end
 
 @testset "block operator" begin
