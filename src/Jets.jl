@@ -504,6 +504,13 @@ function Base.extrema(x::BlockArray{T}) where {T}
     end
     mn,mx
 end
+
+function Base.fill!(x::BlockArray, a)
+    for i = 1:length(x.arrays)
+        fill!(x.arrays[i], a)
+    end
+    x
+end
 # -->
 
 # BlockArray broadcasting implementation --<
