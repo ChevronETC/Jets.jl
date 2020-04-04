@@ -671,6 +671,8 @@ getblock(A::T, i, j) where {J<:Jet{<:JetAbstractSpace,<:JetAbstractSpace,typeof(
 getblock(::Type{JopNl}, A::Jop{T}, i, j) where {T<:Jet{<:JetAbstractSpace,<:JetAbstractSpace,typeof(JetBlock_f!)}} = getblock(jet(A), i, j)::JopNl
 getblock(::Type{JopLn}, A::Jop{T}, i, j) where {T<:Jet{<:JetAbstractSpace,<:JetAbstractSpace,typeof(JetBlock_f!)}} = JopLn(getblock(jet(A), i, j))
 
+Base.reshape(x::AbstractArray, R::JetBSpace) = BlockArray([view(x, R.indices[i]) for i=1:length(R.indices)], R.indices)
+
 #
 # multiply operator by a scalar
 #

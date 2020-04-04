@@ -533,6 +533,25 @@ end
     x = similar(y, Int)
 end
 
+@testset "block array, reshaped from array" begin
+    x = rand(5,10)
+    R = JetBSpace([JetSpace(Float64,5) for i=1:10])
+    _x = reshape(x, R)
+    for i = 1:length(_x)
+        @test _x[i] ≈ x[i]
+        _x[i] = i
+        @test x[i] ≈ i
+    end
+    A = [rand(10,10) for i = 1:5]
+    _A = @blockop [JopBaz(A[i]) for i = 1:5]
+
+    m = rand(domain(_A))
+    _y = _A*m
+    for i = 1:5
+        @test getblock(_y, i) ≈ A[i]*m
+    end
+end
+
 @testset "block operator" begin
     B₁₁,B₁₃,B₁₄,B₂₁,B₂₃,B₂₄,B₃₂,B₃₃ = map(i->rand(10,10), 1:8)
     A₁₁,A₁₃,A₁₄,A₂₁,A₂₃,A₃₂,A₃₃ = map(B->JopBaz(B), (B₁₁,B₁₃,B₁₄,B₂₁,B₂₃,B₃₂,B₃₃))
