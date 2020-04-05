@@ -216,7 +216,7 @@ nb = nblocks(A)
 nrowblocks = nblocks(A,1)
 ncolblocks = nblocks(A,2)
 ```
-We cam form block vectors in the domain and range of `A`.  Moreover, once we have
+We can form block vectors in the domain and range of `A`.  Moreover, once we have
 formed a block vector, we can access individual blocks. For example,
 ```julia
 d = rand(range(A))
@@ -229,6 +229,11 @@ d₂ = getblock(d, 2) # this is not a copy, it is a reference to the second bloc
 m₁ = getblock(m, 1)
 
 setblock!(d, 2, rand(size(d₂)))
+```
+We can reshape Julia Array's into block arrays.  For example,
+```julia
+_d = rand(eltype(range(A)), size(range(A)))
+d = reshape(_d, range(A))
 ```
 Since `BlockArrays` extend Julia's `AbstractArray` and broadcasting interfaces,
 most of the functionality of a Julia `Array` is also available for `BlockArray`'s.

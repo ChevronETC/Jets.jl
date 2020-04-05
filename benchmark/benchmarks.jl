@@ -87,6 +87,7 @@ SUITE["Composition"]["range"] = @benchmarkable range($G)
 _F = [JopBar(100) JopBar(100) JopBar(100) ; JopBar(100) JopBar(100) JopBar(100)]
 F = @blockop _F
 domainF = domain(F)
+rangeF = range(F)
 m = rand(domain(F))
 d = rand(range(F))
 e = rand(range(F))
@@ -119,11 +120,13 @@ SUITE["Block, homogeneous"]["norm"] = @benchmarkable norm($d)
 SUITE["Block, homogeneous"]["norm (base-case)"] = @benchmarkable norm($d′)
 SUITE["Block, homogeneous"]["extrema"] = @benchmarkable extrema($d)
 SUITE["Block, homogeneous"]["extrema (base-case)"] = @benchmarkable extrema($d′)
+SUITE["Block, homogeneous"]["reshape"] = @benchmarkable reshape($d′, $rangeF)
 
 x = rand(100)
 _F = [JopBar(100) JopFoo(x) JopBar(100) ; JopBar(100) JopFoo(x) JopBar(100)]
 F = @blockop _F
 domainF = domain(F)
+rangeF = range(F)
 m = rand(domain(F))
 d = rand(range(F))
 e = rand(range(F))
@@ -150,5 +153,6 @@ SUITE["Block, heterogeneous"]["broadcast"] = @benchmarkable f .= d .+ e
 SUITE["Block, heterogeneous"]["broadcast (base-case)"] = @benchmarkable f′ .= d′ .+ e′
 SUITE["Block, heterogeneous"]["fill!"] = @benchmarkable f .= $(rand())
 SUITE["Block, heterogeneous"]["fill! (base-case)"] = @benchmarkable f′ .= $(rand())
+SUITE["Block, heterogeneous"]["reshape"] = @benchmarkable reshape($d′, $rangeF)
 
 SUITE
