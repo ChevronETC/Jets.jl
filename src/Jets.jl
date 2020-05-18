@@ -114,7 +114,6 @@ state(jet::Jet) = jet.s
 state!(jet, s) = begin jet.s = merge(jet.s, s); jet end
 perfstat(jet::T) where {D,R,F<:Function,T<:Jet{D,R,F}} = nothing
 point(jet::Jet) = jet.mₒ
-Base.close(jet::Jet) = finalize(jet)
 
 function point!(jet::Jet, mₒ::AbstractArray)
     jet.mₒ = mₒ
