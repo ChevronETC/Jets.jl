@@ -114,6 +114,7 @@ state(jet::Jet) = jet.s
 state!(jet, s) = begin jet.s = merge(jet.s, s); jet end
 perfstat(jet::T) where {D,R,F<:Function,T<:Jet{D,R,F}} = nothing
 point(jet::Jet) = jet.mₒ
+Base.close(j::Jet{D,R,F}) where {D,R,F<:Function} = false
 
 function point!(jet::Jet, mₒ::AbstractArray)
     jet.mₒ = mₒ
@@ -319,6 +320,12 @@ function point!(j::Jet{D,R,typeof(JetComposite_f!)}, mₒ::AbstractArray) where 
     j
 end
 
+function Base.close(j::Jet{D,R,typeof(JetComposite_f!)}) where {D,R}
+    ops = state(j).ops
+    close.(ops)
+    nothing
+end
+
 function perfstat(j::Jet{D,R,typeof(JetComposite_f!)}) where {D,R}
     ops = state(j).ops
     s = nothing
@@ -397,6 +404,12 @@ function point!(j::Jet{D,R,typeof(JetSum_f!)}, mₒ::AbstractArray) where {D<:Je
         point!(jet(op), mₒ)
     end
     j
+end
+
+function Base.close(j::Jet{D,R,typeof(JetSum_f!)}) where {D,R}
+    ops = state(j).ops
+    close.(ops)
+    nothing
 end
 
 function perfstat(j::Jet{D,R,typeof(JetSum_f!)}) where {D,R}
@@ -687,6 +700,12 @@ function getblock(jet::Jet{D,R,typeof(JetComposite_f!)}, i, j) where {D,R}
 end
 
 Base.reshape(x::AbstractArray, R::JetBSpace) = BlockArray([view(x, R.indices[i]) for i=1:length(R.indices)], R.indices)
+
+function Base.close(j::Jet{D,R,typeof(JetBlock_f!)}) where {D,R}
+    ops = state(j).ops
+    close.(ops)
+    nothing
+end
 
 #
 # multiply operator by a scalar
