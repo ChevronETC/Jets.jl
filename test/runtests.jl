@@ -7,6 +7,16 @@ function JopFoo(diag)
 end
 Jets.perfstat(J::Jet{D,R,typeof(JopFoo_df!)}) where {D,R} = Float64(π)
 
+JopClose_df!(d,m;diagonal,kwargs...) = d .= diagonal .* m
+function JopClose(diag)
+    spc = JetSpace(Float64, length(diag))
+    file = tempname()
+    touch(file)
+    JopLn(;df! = JopClose_df!, dom = spc, rng = spc, s = (diagonal=diag, file=file))
+end
+Base.close(J::Jet{D,R,typeof(JopClose_df!)}) where {D,R} = rm(state(J).file)
+
+
 JopBar_f!(d,m;kwargs...) = d .= m.^2
 JopBar_df!(δd,δm;mₒ,kwargs...) = δd .= 2 .* mₒ .* δm
 function JopBar(n)
@@ -92,6 +102,7 @@ end
     @test shape(✈) == ((10,2),(20,))
     @test size(✈, 1) == 20
     @test size(✈, 2) == 20
+    @test close(✈) == false
 end
 
 @testset "linear operator" begin
@@ -711,6 +722,41 @@ end
     m = rand(domain(A))
     B = a*A
     @test B*m ≈ a*(A*m)
+end
+
+@testset "close op" begin
+    A = JopClose(rand(2))
+    @test isfile(state(A).file)
+    close(A)
+    @test !isfile(state(A).file)
+end
+
+@testset "close block op" begin
+    A = @blockop [JopClose(rand(2)) JopClose(rand(2)) ; JopClose(rand(2)) JopClose(rand(2))]
+    A₁₁ = getblock(A,1,1)
+    A₁₂ = getblock(A,1,2)
+    A₂₁ = getblock(A,2,1)
+    A₂₂ = getblock(A,2,2)
+    for B in (A₁₁, A₁₂, A₂₁, A₂₂)
+        @test isfile(state(B).file)
+    end
+    close(A)
+    for B in (A₁₁, A₁₂, A₂₁, A₂₂)
+        @test !isfile(state(B).file)
+    end
+end
+
+@testset "close composite op" begin
+    A₁ = JopClose(rand(2))
+    A₂ = JopClose(rand(2))
+    A = A₂ ∘ A₁
+    for B in (A₁, A₂)
+        @test isfile(state(B).file)
+    end
+    close(A)
+    for B in (A₁, A₂)
+        @test !isfile(state(B).file)
+    end
 end
 
 @testset "perfstat" begin
