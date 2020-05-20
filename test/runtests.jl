@@ -371,6 +371,19 @@ end
     @test J₄₃₂₁ * δm ≈ L₄₃₂₁ * δm
 end
 
+@testset "composition operator * operator" begin
+    A₁ = JopFoo(rand(2))
+    A₂ = @blockop [JopBar(2), JopBar(2)]
+    A = A₂ ∘ A₁
+
+    A₁₁ = getblock(A, 1, 1)
+    A₂₁ = getblock(A, 2, 1)
+
+    m = rand(domain(A))
+    @test getblock(A * m, 1) ≈ A₁₁ * m
+    @test getblock(A * m, 2) ≈ A₂₁ * m
+end
+
 @testset "sum, linear" begin
     A₁,A₂,A₃ = map(i->JopBaz(rand(10,10)), 1:3)
     A₁₂ = A₁ + A₂

@@ -266,6 +266,7 @@ Base.Array(R::JetSSpace{T,N,F}) where {T,N,F} = SymmetricArray{T,N,F}(Array{T,N}
 #
 # composition, f ∘ g
 #
+
 JetComposite(ops) = Jet(f! = JetComposite_f!, df! = JetComposite_df!, df′! = JetComposite_df′!, dom = domain(ops[end]), rng = range(ops[1]), s = (ops=ops,))
 
 function JetComposite_f!(d::T, m; ops, kwargs...) where {T<:AbstractArray}
@@ -664,11 +665,26 @@ nblocks(A::Jop) = (nblocks(range(A)), nblocks(domain(A)))
 nblocks(A::Jop, i) = i == 1 ? nblocks(range(A)) : nblocks(domain(A))
 
 getblock(jet::Jet{D,R,typeof(JetBlock_f!)}, i, j) where {D,R} = state(jet).ops[i,j]
-getblock(A::JopLn{T}, i, j) where {T<:Jet{<:JetAbstractSpace,<:JetAbstractSpace,typeof(JetBlock_f!)}} = JopLn(getblock(jet(A), i, j))
-getblock(A::JopNl{T}, i, j) where {T<:Jet{<:JetAbstractSpace,<:JetAbstractSpace,typeof(JetBlock_f!)}} = getblock(jet(A), i, j)
-getblock(A::T, i, j) where {J<:Jet{<:JetAbstractSpace,<:JetAbstractSpace,typeof(JetBlock_f!)},T<:JopAdjoint{J}} = getblock(A.op, j, i)'
-getblock(::Type{JopNl}, A::Jop{T}, i, j) where {T<:Jet{<:JetAbstractSpace,<:JetAbstractSpace,typeof(JetBlock_f!)}} = getblock(jet(A), i, j)::JopNl
-getblock(::Type{JopLn}, A::Jop{T}, i, j) where {T<:Jet{<:JetAbstractSpace,<:JetAbstractSpace,typeof(JetBlock_f!)}} = JopLn(getblock(jet(A), i, j))
+getblock(A::JopLn{T}, i, j) where {T<:Jet} = JopLn(getblock(jet(A), i, j))
+getblock(A::JopNl{T}, i, j) where {T<:Jet} = getblock(jet(A), i, j)
+getblock(A::T, i, j) where {J<:Jet,T<:JopAdjoint{J}} = getblock(A.op, j, i)'
+getblock(::Type{JopNl}, A::Jop{T}, i, j) where {T<:Jet} = getblock(jet(A), i, j)::JopNl
+getblock(::Type{JopLn}, A::Jop{T}, i, j) where {T<:Jet} = JopLn(getblock(jet(A), i, j))
+
+isblockop(A::Jop{<:Jet{<:JetAbstractSpace,<:JetAbstractSpace,typeof(JetBlock_f!)}}) = true
+isblockop(A::Jop) = false
+
+function getblock(jet::Jet{D,R,typeof(JetComposite_f!)}, i, j) where {D,R}
+    ops = []
+    for op in state(jet).ops
+        if isblockop(op)
+            push!(ops, getblock(op, i, j))
+        else
+            push!(ops, op)
+        end
+    end
+    mapreduce(identity, ∘, ops)
+end
 
 Base.reshape(x::AbstractArray, R::JetBSpace) = BlockArray([view(x, R.indices[i]) for i=1:length(R.indices)], R.indices)
 
