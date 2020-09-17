@@ -326,7 +326,7 @@ Return the shape of the range and domain of `A::Union{Jet, Jop, AbstractMatrix}`
 
 With no arguments, return `(shape(range(A)), shape(domain(A)))`.
 
-With `i` specified, return `shape(range(A))` for `i = 1` and return `shape(domain(A))` for `i = 2`.
+With `i` specified, return `shape(range(A))` for `i = 1` and return `shape(domain(A))` else.
 """
 shape(A::Union{Jet,Jop}) = (shape(A, 1), shape(A, 2))
 shape(A::AbstractMatrix,i) = (size(A, i),)
@@ -339,7 +339,7 @@ Return the size of the range and domain of `A::Union{Jet,Jop}`.
 
 With no arguments, return `(size(range(A)), size(domain(A)))`.
 
-With `i` specified, return `size(range(A))` for `i = 1` and return `size(domain(A))` for `i = 2`.
+With `i` specified, return `size(range(A))` for `i = 1` and return `size(domain(A))` else.
 """
 Base.size(A::Union{Jet,Jop}, i) = prod(shape(A, i))
 Base.size(A::Union{Jet,Jop}) = (size(A, 1), size(A, 2))
@@ -1040,6 +1040,15 @@ function point!(j::Jet{D,R,typeof(JetBlock_f!)}, mₒ::AbstractArray) where {D<:
     j
 end
 
+"""
+    nblocks(A[, i])
+    
+Return the number of blocks in the range and domain of the `Jets` block operator `A::Union{Jet, Jop}`.
+
+With no arguments, return `(nblocks(range(jet)), nblocks(domain(jet)))`.
+
+With `i` specified, return `nblocks(range(jet))` for `i = 1` and return `nblocks(domain(jet))` else.
+"""
 nblocks(jet::Jet) = (nblocks(range(jet)), nblocks(domain(jet)))
 nblocks(jet::Jet, i) = i == 1 ? nblocks(range(jet)) : nblocks(domain(jet))
 nblocks(A::Jop) = (nblocks(range(A)), nblocks(domain(A)))
