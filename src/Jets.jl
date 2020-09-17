@@ -111,6 +111,7 @@ domain(jet::Jet) = jet.dom
 Base.range(jet::Jet) = jet.rng
 Base.eltype(jet::Jet) = promote_type(eltype(domain(jet)), eltype(range(jet)))
 state(jet::Jet) = jet.s
+state(jet::Jet{D,R,F}, key) where {D,R,F<:Function} = jet.s[key]
 state!(jet, s) = begin jet.s = merge(jet.s, s); jet end
 perfstat(jet::T) where {D,R,F<:Function,T<:Jet{D,R,F}} = nothing
 point(jet::Jet) = jet.mₒ
@@ -128,6 +129,7 @@ Base.eltype(A::Jop) = eltype(jet(A))
 point(A::JopLn) = point(jet(A))
 point(A::JopAdjoint) = point(jet(A.op))
 state(A::Jop) = state(jet(A))
+state(A::Jop, key) = state(jet(A), key)
 state!(A::Jop, s) = state!(jet(A), s)
 perfstat(A::Jop) = perfstat(jet(A))
 Base.close(A::Jop) = close(jet(A))
@@ -334,6 +336,24 @@ function perfstat(j::Jet{D,R,typeof(JetComposite_f!)}) where {D,R}
         s == nothing || break
     end
     s
+end
+
+function state(j::Jet{D,R,typeof(JetComposite_f!)}, key) where {D,R}
+    key ∈ keys(state(j)) && (return state(j)[key])
+
+    haskey = 0
+    local _op
+    for op in state(j).ops
+        if key ∈ keys(state(op))
+            haskey += 1
+            _op = op
+        end
+    end
+
+    haskey == 0 && error("key $key does not exist in the state of the composite operator")
+    haskey > 1 && error("ambiguous: key $key exists in more than one operator in the composition")
+
+    state(_op, key)
 end
 
 #

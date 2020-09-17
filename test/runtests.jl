@@ -16,7 +16,6 @@ function JopClose(diag)
 end
 Base.close(J::Jet{D,R,typeof(JopClose_df!)}) where {D,R} = rm(state(J).file)
 
-
 JopBar_f!(d,m;kwargs...) = d .= m.^2
 JopBar_df!(δd,δm;mₒ,kwargs...) = δd .= 2 .* mₒ .* δm
 function JopBar(n)
@@ -97,6 +96,7 @@ end
     state!(✈, (a=a,))
     s = state(✈)
     @test s.a ≈ a
+    @test state(✈, :a) ≈ a
     @test shape(✈, 1) == (10,2)
     @test shape(✈, 2) == (20,)
     @test shape(✈) == ((10,2),(20,))
@@ -131,6 +131,9 @@ end
     @test range(A) == JetSpace(Float64,10)
     @test eltype(A) == Float64
     @test convert(Array, A) ≈ diagm(0=>diag)
+
+    @test state(A).diagonal ≈ diag
+    @test state(A, :diagonal) ≈ diag
 
     B = JopFooBar(5)
     @test convert(Array, B) ≈ diagm(0=>vec(state(B).A))
@@ -393,6 +396,21 @@ end
     m = rand(domain(A))
     @test getblock(A * m, 1) ≈ A₁₁ * m
     @test getblock(A * m, 2) ≈ A₂₁ * m
+end
+
+@testset "composition, state" begin
+    diag = rand(2,2)
+    A = JopFoo(diag)
+    F = JopBar(2)
+    G = A ∘ F
+    @test state(G, :diagonal) ≈ state(A, :diagonal)
+    @test state(G, :diagonal) ≈ state(A).diagonal
+
+    @test_throws Exception state(G, :foo)
+
+    B = JopFoo(diag)
+    C = A ∘ B
+    @test_throws Exception state(C, :digaonal)
 end
 
 @testset "sum, linear" begin
