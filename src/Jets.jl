@@ -325,6 +325,7 @@ With no arguments, return `(size(range(A)), size(domain(A)))`.  With `i` specifi
 return `size(range(A))` for `i = 1` and return `size(domain(A))` otherwise.
 """
 shape(A::Union{Jet,Jop}) = (shape(A, 1), shape(A, 2))
+
 shape(A::AbstractMatrix,i) = (size(A, i),)
 shape(A::AbstractMatrix) = ((size(A, 1),), (size(A, 2),))
 
