@@ -303,8 +303,10 @@ Base.close(A::Jop) = close(jet(A))
 
 domain(A::Jop) = domain(jet(A))
 Base.range(A::Jop) = range(jet(A))
+
 domain(A::JopAdjoint) = range(A.op)
 Base.range(A::JopAdjoint) = domain(A.op)
+
 domain(A::AbstractMatrix{T}) where {T} = JetSpace(T, size(A,2))
 Base.range(A::AbstractMatrix{T}) where {T} = JetSpace(T, size(A,1))
 
