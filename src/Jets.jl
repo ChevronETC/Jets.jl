@@ -789,7 +789,6 @@ end
 
 # BlockArray array interface implementation <--
 Base.IndexStyle(::Type{T}) where {T<:BlockArray} = IndexLinear()
-
 Base.size(A::BlockArray) = (A.indices[end][end],)
 
 function Base.getindex(A::BlockArray, i::Int)
