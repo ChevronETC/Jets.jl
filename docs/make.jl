@@ -1,16 +1,6 @@
-push!(LOAD_PATH,"../src/")
+using Documenter, Jets, LinearAlgebra, Random
 
-using Documenter, Jets
-
-makedocs(
-    sitename="Jets.jl",
-    modules=[CvxCompress],
-    pages = [
-        "Home" => "index.md",
-        "User Guide" => "manual.md",
-        "reference.md"
-        ]
-)
+makedocs(sitename="Jets.jl", modules=[Jets])
 
 deploydocs(
     repo = "github.com/ChevronETC/Jets.jl"

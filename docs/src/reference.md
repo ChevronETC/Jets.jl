@@ -1,4 +1,6 @@
 # Reference
 
-@autodocs Modules = [Jets] Order = [:function, :type] 
-
+```@autodocs
+Modules = [Jets]
+Order   = [:function, :type]
+```

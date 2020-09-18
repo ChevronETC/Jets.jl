@@ -2,12 +2,12 @@
 
 Jets is a Julia library for matrix-free linear algebra and nonlinear optimization.
 
-Some related Julia packages include:
-- JOLI https://github.com/slimgroup/JOLI.jl 
-- LinearMap https://github.com/Jutho/LinearMaps.jl 
-- BlockArrays https://github.com/JuliaArrays/BlockArrays.jl 
+Other Julia packages that provide similar functionality include:
+- LinearMaps https://github.com/Jutho/LinearMaps.jl 
 - FunctionalOperators https://github.com/hakkelt/FunctionOperators.jl 
 - AbstractOperators https://github.com/kul-forbes/AbstractOperators.jl 
+- JOLI https://github.com/slimgroup/JOLI.jl 
+- BlockArrays https://github.com/JuliaArrays/BlockArrays.jl 
 
 The purpose of Jets is to provide familiar matrix-vector syntax without forming matrices. Instead, the action of the matrix and its adjoint applied to vectors is specified using Julia methods. In addition, Jets provides a framework for nonlinear functions and their linearization. The main construct in this package is a `jet` and is loosely based on its mathematical namesake (https://en.wikipedia.org/wiki/Jet_(mathematics)). In particular,  a `jet` describes a function and its linearization at some point in its domain.
 
@@ -46,10 +46,10 @@ x₃ = rand(R₃) # x₃ will be a 3 dimensional array of size (10,20,2) and typ
 ```
 
 ### JetSSpace
-There are jets that lead to symmetries in their domain/range, and those symmetries can be used for increased computational efficiency. For example, the Fourier transform of a real vector has Hermittian symmetry for negative frequencies. `JetSSpace` is used to construct an array that includes extra information about these symmetries. In general, jets that have symmetric spaces should provide a method `symspace` for the construction of its symmetric space. 
+There are jets that lead to symmetries in their domain/range, and those symmetries can be used for increased computational efficiency. For example, the Fourier transform of a real vector has Hermitian symmetry for negative frequencies. `JetSSpace` is used to construct an array that includes extra information about these symmetries. In general, jets that have symmetric spaces should provide a method `symspace` for the construction of its symmetric space. 
 
 **Example**
-```
+```julia
 using Pkg
 Pkg.add("Jets","JetPackFft")
 A = JopFft(JetSpace(Float64,128))
@@ -57,7 +57,7 @@ R = range(A) # the range of A is a symmetric space R<:JetSSpace
 ```
 
 ### JetBSpace
-`Jets` provides a block jet that is analagous to a block matrix. The domain and range associated with a block jet is a `JetBSpace`, and a `JetBSpace` adds book-keeping information to describe this blocked structure. For more information, please see the block jet documentation, below.
+`Jets` provides a block jet that is analogous to a block matrix. The domain and range associated with a block jet is a `JetBSpace`, and a `JetBSpace` adds book-keeping information to describe this blocked structure. For more information, please see the block jet documentation, below.
 
 ### Convenience methods for Jet vector spaces
 Jets provides the following convenience methods for all concrete Jet Vector spaces `R::JetAbstractSpace`:
