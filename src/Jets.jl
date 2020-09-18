@@ -7,7 +7,7 @@ abstract type JetAbstractSpace{T,N} end
 """
     eltype(R)
 
-Determine the element type of the space `R::JetAbstractSpace`
+Return the element type of the space `R::JetAbstractSpace`.
 """
 Base.eltype(R::JetAbstractSpace{T}) where {T} = T
 Base.eltype(R::Type{JetAbstractSpace{T,N}}) where {T,N} = T
@@ -362,7 +362,7 @@ jacobian(A::AbstractMatrix, mₒ::AbstractArray) = copy(A)
 """
     adjoint(A::Union{JopLn, JopAdjoint})
 
-Return the adjoint of the of A.
+Return the adjoint of A.
 """
 Base.adjoint(A::JopLn) = JopAdjoint(A)
 Base.adjoint(A::JopAdjoint) = A.op
@@ -1125,22 +1125,24 @@ end
 
 Compute and return the left and right hand sides of the *dot product test*:
 
-``<d,Am> \approx <A^Hd,m>``
+`<d,Am> ≈ <Aᴴd,m>`
 
-Here ``A^H`` is the conjugate transpose or adjoint of ``A``, and ``<x, y>`` denotes the inner
-product of vectors ``x`` and ``y``. The left and right hand sides of the dot product test are
-expected to be equivalent close to machine precision for operator ``A``. If the equality does not
-hold this can indicate a problem with the implementation of the operator ``A``.
+Here `Aᴴ` is the conjugate transpose or adjoint of `A`, and `<x, y>` denotes the inner
+product of vectors `x` and `y`. The left and right hand sides of the dot product test are
+expected to be equivalent close to machine precision for operator `A`. If the equality does not
+hold this can indicate a problem with the implementation of the operator `A`.
 
 This function provides the optional named arguments `mmask` and `dmask` which are vectors in the
 domain and range of `A` that are applied via elementwise multiplication to mask the vectors
 `m` and `d` before applying of the operator, as shown below. Here we use `∘` to represent
 the Hadamard product (elementwise multiplication) of two vectors.
 
-``<dmask ∘ d, A (mmask ∘ m)> ≈ <Aᵀ (dmask ∘ d), mmask ∘ m>``
+`<dmask ∘ d, A (mmask ∘ m)> ≈ <Aᵀ (dmask ∘ d), mmask ∘ m>`
 
 You can test the relative accuracy of the operator with this relation for the left hand side `lhs` and
-right hand side `rhs` returned by this function: ``|lhs - rhs| / |lhs + rhs| < ϵ``.
+right hand side `rhs` returned by this function: 
+
+`|lhs - rhs| / |lhs + rhs| < ϵ`
 """
 function dot_product_test(op::JopLn, m::AbstractArray, d::AbstractArray; mmask=[], dmask=[])
     mmask = length(mmask) == 0 ? ones(domain(op)) : mmask
@@ -1162,9 +1164,9 @@ end
 """
     μobs, μexp = linearization_test(F, mₒ; μ)
 
-Thest that the jacobian, ``J``, of ``F`` satisfies the Taylor expansion:
+Thest that the jacobian, `J`, of `F` satisfies the Taylor expansion:
 
-``F(m) = F(m_o) + F'(m_o)δm + O(δm^2)``
+`F(m) = F(m_o) + F'(m_o)δm + O(δm^2)`
 """
 function linearization_test(F::JopNl, mₒ::AbstractArray;
         μ=[1.0, 0.5, 0.25, 0.125, 0.0625, 0.03125], δm=[], mmask=[], dmask = [], seed=Inf)
@@ -1204,7 +1206,9 @@ end
     lhs,rhs = linearity_test(A::Jop)
 
 test the the linear Jet operator `A` satisfies the following test
-for linearity: ``A(m_1+m_2)=Am_1 + A_m2``.
+for linearity: 
+    
+`A(m_1+m_2)=Am_1 + A_m2`
 """
 function linearity_test(A::Union{JopLn,JopAdjoint})
     m1 = -1 .+ 2 * rand(domain(A))

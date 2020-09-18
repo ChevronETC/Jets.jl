@@ -100,14 +100,16 @@ using Pkg
 Pkg.add("Jets")
 foo!(d, m; a, kwargs...) = d .= x.^a
 dfoo!(δd, δm; mₒ, a, kwargs...) = δd .= a * mₒ.^(a-1) .* δm
-jet = Jet(dom = JetSpace(Float64,128), rng = JetSpace(Float64,128), f! = foo!, df! = dfoo!, s = (a=1.0,))
+jet = Jet(dom = JetSpace(Float64,128), rng = 
+    JetSpace(Float64,128), f! = foo!, df! = dfoo!, s = (a=1.0,))
 ```
 
 In the above construction, we define the domain (`dom`), range (`rng`), and a function (`f!`) with its linearization (`df!`). In addition, the jet contains *state*. In this case the state is the value of the exponent `a`. The state is passed to the jet using the named tuple `s = (a=1.0,)`. Notice that construction of the jet uses Julia's named arguments. 
 
 Finally, we note that for this specific example, the construction does not specify the adjoint of the lineariziation. This is because for this specific case the linearization is self-adjoint. An equivalent construction that explicitly includes the adjoint is:
 ```julia
-jet = Jet(dom = JetSpace(Float64,128), rng = JetSpace(Float64,128), f! = foo!, df! = dfoo!, df′! = dfoo!, s=(a=1.0,))
+jet = Jet(dom = JetSpace(Float64,128), rng = 
+    JetSpace(Float64,128), f! = foo!, df! = dfoo!, df′! = dfoo!, s=(a=1.0,))
 ```
 
 ## Linear and nonlinear operators
@@ -115,21 +117,21 @@ A jet can be wrapped into nonlinear (`JopNl`) and linear (`JopLn`) operators. Wh
 
 **Example: linear operator**
 ```julia
-A = JopLn(jet, rand(domain(A))  # A is a linear operator linearized about a random point in its domain
-m = rand(domain(A))             # m is a vector in the domain of A
-d = A*m                         # d is a vector in the range of A, computed via the dfoo! method
+A = JopLn(jet, rand(domain(A))  # A is a linear operator linearized about a random point in domain(A)
+m = rand(domain(A))             # m is a vector in domain(A)
+d = A*m                         # d is a vector in range(A), computed via the dfoo! method
 mul!(d, A, m)                   # equivalent in-place version of the previous line
-a = A'*d                        # a is a vector in the domain of A, computed via dfoo! (remember A is self-adjoint)
+a = A'*d                        # a is a vector in domain(A), computed via dfoo! (A is self-adjoint)
 mul!(a, A', d)                  # equivalent in-place version of the previous line
 ```
 
 **Example: nonlinear operator**
 ```julia
 F = JopNl(jet)                  # F is a nonlinear operator
-m = rand(domain(A))             # m is a vector in the domain of A
-d = F*m                         # d is a vector in the range of A, computed via the foo! method
+m = rand(domain(A))             # m is a vector in domain(A)
+d = F*m                         # d is a vector in range(A), computed via the foo! method
 mul!(d, F, m)                   # equivalent in-place version of the prvious line
-A = jacobian(F, rand(domain(A)) # A is the Jacobian of F and is a linear operator representation of the jet
+A = jacobian(F, rand(domain(A)) # A is the Jacobian of F, a linear operator
 ```
 
 In addition, same methods that were applied to a jet can be applied to `Jets` operators: `domain`, `range`, `eltype`, `shape`, `size`, `state`, `state!`, `close`. Finally, note that given a linear operator, we can recover the corresponding matrix.
@@ -214,7 +216,8 @@ using Jets
 MyLinearJet_df!(d, m; A, kwargs...) = mul!(d,A,m)
 MyLinearJet_df′!(m, d; A, kwargs...) = mul!(m,A',d)
 function MyLinearJet()
-    JopLn(dom = JetSpace(Float64,2), rng = JetSpace(Float64,2), df! = MyLinearJet_df!, df′! = MyLinearJet_df′!, s=(A=rand(2,2),))
+    JopLn(dom = JetSpace(Float64,2), rng = JetSpace(Float64,2), 
+        df! = MyLinearJet_df!, df′! = MyLinearJet_df′!, s=(A=rand(2,2),))
 end
 ```
 
@@ -224,7 +227,8 @@ using Jets
 MySelfAdjointJet_df!(d, m; A, kwargs...) = mul!(d,A,m)
 function MySelfAdjointJet()
     B = rand(2,2)
-    JopLn(dom = JetSpace(Float64,2), rng = JetSpace(Float64,2), df! = MySelfAdjointJet_df!, s = (A=B'*B,))
+    JopLn(dom = JetSpace(Float64,2), rng = JetSpace(Float64,2), 
+        df! = MySelfAdjointJet_df!, s = (A=B'*B,))
 end
 ```
 
@@ -234,6 +238,7 @@ using Jets
 MyNonLinearJet_f!(d, m; a, kwargs...) = d .= x.^a
 MyNonLinearJet_df!(d, m; mₒ, a, kwargs...) = d . = a * mₒ.^(a-1) .* m
 function MyNonLinearJet()
-    JopNl(dom = JetSpace(Float64,2), rng = JetSpace(Float64,2), f! = MyNonLinearJet_f!, df! = MyNonLinearJet_df!, s = (a=2.0,))
+    JopNl(dom = JetSpace(Float64,2), rng = JetSpace(Float64,2), 
+        f! = MyNonLinearJet_f!, df! = MyNonLinearJet_df!, s = (a=2.0,))
 end
 ```
