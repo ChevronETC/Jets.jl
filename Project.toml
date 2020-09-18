@@ -1,11 +1,14 @@
 name = "Jets"
 uuid = "2a57b368-ab28-5ba9-84aa-637fe7991822"
-version = "0.9.0"
+version = "1.0.0"
 
 [deps]
 CRC32c = "8bf52ea8-c179-5cab-976a-9e18b702a9bc"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+
+[compat]
+julia = "1"
 
 [extras]
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"

@@ -1,35 +1,62 @@
-#=
-NOTES...
-* we use an extra field (a named tuple) in JotOp to keep operator state
-* I could not figure out how to make the block operator without including spaces in Jop
-* Can we use LinearMaps.jl, AbstractOperators.jl, etc.?
-
-TODO...
- * revisit type stability / generated code
-   - compoiste operator has unstable mul,mul!
-   - block operator has unstable constructor
- * LinearAlgebra has an Adjoint type, can we use it?
- * propagating @inbounds
- * kron
-=#
-
 module Jets
 
 using CRC32c, LinearAlgebra, Random
 
 abstract type JetAbstractSpace{T,N} end
 
+"""
+    eltype(R)
+
+Determine the element type of the space `R::JetAbstractSpace`
+"""
 Base.eltype(R::JetAbstractSpace{T}) where {T} = T
 Base.eltype(R::Type{JetAbstractSpace{T,N}}) where {T,N} = T
 Base.eltype(R::Type{JetAbstractSpace{T}}) where {T} = T
 Base.ndims(R::JetAbstractSpace{T,N}) where {T,N} = N
+
+"""
+    length(R)
+
+Return the dimension the space `R::JetAbstractSpace`
+"""
 Base.length(R::JetAbstractSpace) = prod(size(R))
+
+"""
+    size(R[,i])
+
+Return the shape of the array associated to the Jet space R::JetAbstractSpace.
+If `i` is specifid, then returns the length along the ith array dimension.
+"""
 Base.size(R::JetAbstractSpace, i) = size(R)[i]
+
+"""
+    reshape(x, R)
+
+Returns an array that is consistent with the shape of the space `R::JetAbstractSpace`, and shares
+memory with `x`.
+"""
 Base.reshape(x::AbstractArray, R::JetAbstractSpace) = reshape(x, size(R))
 
 struct JetSpace{T,N} <: JetAbstractSpace{T,N}
     n::NTuple{N,Int}
 end
+
+"""
+    JetSpace(T, n)
+
+Construct and return a JetSpace of type `T` and size `n`
+
+# Examples
+Create a 100 dimension space with array elelment type Float64 and array size (100,)
+```
+R1 = JetSpace(Float64, 100)
+```
+
+Create a 100 dimension space with array element type Float32 and array size (5, 20)
+```
+R2 = JetSpace(Float32, 5, 20)
+```
+"""
 JetSpace(_T::Type{T}, n::Vararg{Int,N}) where {T,N} = JetSpace{T,N}(n)
 JetSpace(_T::Type{T}, n::NTuple{N,Int}) where {T,N} = JetSpace{T,N}(n)
 
@@ -37,11 +64,53 @@ Base.size(R::JetSpace) = R.n
 Base.eltype(R::Type{JetSpace{T,N}}) where {T,N} = T
 Base.eltype(R::Type{JetSpace{T}}) where {T} = T
 
+@doc """
+    Array(R)
+
+Construct an uninitialized array of the type and size defined by `R::JetsAbstractSpace`.
+"""
+Array
+
+@doc """
+    ones(R)
+
+Construct an array of the type and size defined by `R::JetAbstractSpace{T}` and filled with `one(T)`.
+"""
+ones
+
+@doc """
+    rand(R)
+
+Construct an array of the type and size defined by the `R::JetAbstractSpace`, and filled with random values.
+"""
+rand
+
+@doc """
+    zeros(R)
+
+Construct an array of the type and size defined by `R::JetAbstractSpace{T}` and filled with `zero(T)`.
+"""
+zeros
+
 for f in (:ones, :rand, :zeros)
     @eval (Base.$f)(R::JetSpace{T,N}) where {T,N} = ($f)(T,size(R))::Array{T,N}
 end
 Base.Array(R::JetSpace{T,N}) where {T,N} = Array{T,N}(undef, size(R))
 
+"""
+    randperm(R)
+
+Construct a list of random linear indices over the dimensions of `R::JetAbstractSpace`.  The list
+is useful for selecting a random subset of a multi-dimensional image.
+
+# Example
+```julia
+using Jets
+R = JetSpace(Float64, 10, 2)
+x = rand(R)
+y = x[randperm(R)[1:10]] # get 10 elements at random from x
+```
+"""
 Random.randperm(R::JetAbstractSpace, k::Int) = sort(randperm(length(R))[1:k])
 
 jet_missing(m) = error("not implemented")
@@ -56,6 +125,33 @@ mutable struct Jet{D<:JetAbstractSpace,R<:JetAbstractSpace,F<:Function,DF<:Funct
     mₒ::M
     s::S
 end
+
+"""
+    Jet(;dom, rng, f!, df!, df′!, upstate!, s)
+
+Return a `Jet` with domain `dom::JetAbstractSpace`, range `rng::JetSAbstractpace`, with
+forward mapping  `f!::Function`, linearized forward mapping `df!::Function`, linearized adjoint
+mapping `df′!::Function`, Jacobian state modification function `upstate!::Function`, and state
+`s::NamedTuple`.
+
+A jet describes a function `f!` and its linearization (forward `df!, and adjoint `df′!``) about
+a point.
+
+If one of `f!` or `df!` is specified, and `df′!` is not, then we assume that `f!=df!=df′!`. This means
+that the operator is linear and self-adjoint.
+
+If `f!` and `df!` are sepecified, bug `df′!` is not, then we assume that `df′!=df!`.  This means
+that the operator is nonlinear and self-adjoint.
+
+# Example
+Consider a nonlinear mapping with a self-adjoint linearization ``f(x)=x^2``
+```julia
+using Jets
+g!(m) = m.^2
+dg!(δm; mₒ) = @. 2*mₒ*δm
+jet = Jet(;dom=JetSpace(Float64,2), rng=JetSpace(Float64,2), f! = g!, df! = dg!)
+```
+"""
 function Jet(;
         dom,
         rng,
@@ -85,12 +181,28 @@ abstract type Jop{T<:Jet} end
 struct JopNl{T<:Jet} <: Jop{T}
     jet::T
 end
+
+"""
+    JopNl(; kwargs ...)
+
+Construct a `JopNl` with `Jet` constructed from keyword arguments `kwargs`.
+This is equivalent to `JopNl(Jet(;kwargs...))`.  Please see `Jet` for more
+information.
+"""
 JopNl(;kwargs...) = JopNl(Jet(;kwargs...))
 
 struct JopLn{T<:Jet} <: Jop{T}
     jet::T
 end
 JopLn(jet::Jet, mₒ::AbstractArray) = JopLn(point!(jet, mₒ))
+
+"""
+    JopLn(; kwargs ...)
+
+Construct a `JopLn` with `Jet` constructed from keyword arguments `kwargs`.
+This is equivalent to `JopLn(Jet(;kwargs...))`.  Please see `Jet` for more
+information.
+"""
 JopLn(;kwargs...) = JopLn(Jet(;kwargs...))
 
 JopLn(A::JopLn) = A
@@ -107,22 +219,77 @@ Base.copy(F::JopNl, copymₒ=true) = JopNl(copy(jet(F), copymₒ))
 
 JopLn(A::JopAdjoint) = A
 
+"""
+    R = domain(A)
+
+Return `R::JetAbstractSpace`, which is the domain of `A::Union{Jet, Jop, AbstractMatrix}`.
+"""
 domain(jet::Jet) = jet.dom
+
+"""
+    R = range(A)
+
+Return `R::JetAbstractSpace`, which is the range of `A::Union{Jet, Jop, AbstractMatrix}`.
+"""
 Base.range(jet::Jet) = jet.rng
+
+"""
+    eltype(A::Union{Jet,Jop,JopAdjoint})
+
+Return the element type of `A`.
+"""
 Base.eltype(jet::Jet) = promote_type(eltype(domain(jet)), eltype(range(jet)))
+
+"""
+    state(A::Union{Jet,Jop,JopAdjoint}[, key])
+
+If `key::Symbol` is specified, then return the state corresponding to `key`.
+Otherwise, return the state of A as a `NamedTuple`.
+"""
 state(jet::Jet) = jet.s
 state(jet::Jet{D,R,F}, key) where {D,R,F<:Function} = jet.s[key]
+
+"""
+    state!(A::Union{Jet,Jop,JopAdjoint}, s)
+
+Updates and merges the state of the `A` with `s`.
+"""
 state!(jet, s) = begin jet.s = merge(jet.s, s); jet end
+
+"""
+    perfstat(A)
+
+Return a `Dictionary` with performance information for A::Union{Jet,Jop,JopAdjoint}. the
+`perfstat(jet::Jet)` method that can be implemented by the author of an operator to track
+performance metrics.
+"""
 perfstat(jet::T) where {D,R,F<:Function,T<:Jet{D,R,F}} = nothing
+
+"""
+    point(F)
+
+Return the linearization point (model vector) `mₒ` associated with `F::Union{Jet, JopLn, JopAdjoint}`.
+"""
 point(jet::Jet) = jet.mₒ
+
 Base.close(j::Jet{D,R,F}) where {D,R,F<:Function} = false
 
+"""
+    point!(F, mₒ)
+
+Update the linearization point (model vector) for `F::Union{Jet, JopLn, JopAdjoint}` to model vector `mₒ`.
+"""
 function point!(jet::Jet, mₒ::AbstractArray)
     jet.mₒ = mₒ
     jet.upstate!(mₒ, state(jet))
     jet
 end
 
+"""
+    jet(A)
+
+Return the `Jet` associated with `A::Union{Jop, JopAdjoint}`.
+"""
 jet(A::Jop) = A.jet
 jet(A::JopAdjoint) = jet(A.op)
 Base.eltype(A::Jop) = eltype(jet(A))
@@ -149,28 +316,71 @@ function shape(A::Union{Jet,Jop}, i)
     end
     size(domain(A))
 end
+
+"""
+    shape(A[, i])
+
+Return the shape of the range and domain of `A::Union{Jet, Jop, AbstractMatrix}`.
+With no arguments, return `(size(range(A)), size(domain(A)))`.  With `i` specified,
+return `size(range(A))` for `i = 1` and return `size(domain(A))` otherwise.
+"""
 shape(A::Union{Jet,Jop}) = (shape(A, 1), shape(A, 2))
 
 shape(A::AbstractMatrix,i) = (size(A, i),)
 shape(A::AbstractMatrix) = ((size(A, 1),), (size(A, 2),))
 
+"""
+    size(A[, i])
+
+Return the size of the range and domain of `A::Union{Jet,Jop}`.  With no arguments, return
+`(length(range(A)), length(domain(A)))`.  With `i` specified, return `length(range(A))` for `i = 1`
+and return `length(domain(A))` otherwise.
+"""
 Base.size(A::Union{Jet,Jop}, i) = prod(shape(A, i))
 Base.size(A::Union{Jet,Jop}) = (size(A, 1), size(A, 2))
 
+"""
+    jacobian!(F, m₀)
+
+Return the jacobian of `F::Union{Jet, Jop, AbstractMatrix}` at the
+linearization point `m₀`. The jacobian shares the underlying `Jet` with `F`.
+This means that if the jacobian may mutate `F`.
+"""
 jacobian!(jet::Jet, mₒ::AbstractArray) = JopLn(jet, mₒ)
 jacobian!(F::JopNl, mₒ::AbstractArray) = jacobian!(jet(F), mₒ)
 jacobian!(A::Union{JopLn,AbstractMatrix}, mₒ::AbstractArray) = A
 
+"""
+    jacobian(F, m₀)
+
+Return the jacobian of `F::Union{Jet, Jop, AbstractMatrix}` at the point `m₀`.
+The linearization constructs a new underlying `Jet`.
+"""
 jacobian(F::Union{Jet,Jop}, mₒ::AbstractArray) = jacobian!(copy(F, false), copy(mₒ))
 jacobian(A::AbstractMatrix, mₒ::AbstractArray) = copy(A)
 
+"""
+    adjoint(A::Union{JopLn, JopAdjoint})
+
+Return the adjoint of the of A.
+"""
 Base.adjoint(A::JopLn) = JopAdjoint(A)
 Base.adjoint(A::JopAdjoint) = A.op
 
+"""
+    mul!(d, F, m)
+
+In place version of `d=F*m` where F is a Jets linear (e.g. `JopLn`) or nonlinear (`JopNl`) operator.
+"""
 LinearAlgebra.mul!(d::AbstractArray, F::JopNl, m::AbstractArray) = f!(d, jet(F), m; state(F)...)
 LinearAlgebra.mul!(d::AbstractArray, A::JopLn, m::AbstractArray) = df!(d, jet(A), m; mₒ=point(A), state(A)...)
 LinearAlgebra.mul!(m::AbstractArray, A::JopAdjoint{J,T}, d::AbstractArray) where {J<:Jet,T<:JopLn} = df′!(m, jet(A), d; mₒ=point(A), state(A)...)
 
+"""
+    :*(F, m)
+
+Constructs `F*m` where F is a Jets linear (e.g. `JopLn`) or nonlinear (`JopNl`) operator.
+"""
 Base.:*(A::Jop, m::AbstractArray) = mul!(zeros(range(A)), A, m)
 
 Base.show(io::IO, A::JopLn) = show(io, "Jet linear operator, $(size(domain(A))) → $(size(range(A)))")
@@ -185,6 +395,26 @@ struct JetSSpace{T,N,F<:Function} <: JetAbstractSpace{T,N}
     M::NTuple{N,Int}
     map::F
 end
+
+"""
+    JetSSpace(_T, n, M, map::F)
+
+Construct and return a symmetric space `JetSSpace`.
+
+# parameters
+* `_T` is the type, usually `Complex{Float32}` or `Complex{Float64}`.
+* `n` is a tuple that defines the dimensionality of the space.
+* `M` is a tuple that defines which dimensions are symmetric. Note that currently only a single symmetric dimension is supported by the API.
+* `F` is a function that maps indices for the symmetric dimension, described below.
+
+An example requiring a `JetSSpace` is the Fourier transform: the Fourier transform of a real vector is in
+a complex space with Hermittian symmetry. Only the positive frequencies are needed, and the spectrum at
+negative frequencies is the Hermittian conjugate of the spectrum at the corresponding positive frequencies:
+`S(-f) = conj(S(f)`. For this example the map `F` is a function that returns the multi-dimensional index
+of `f` when given the multi-dimensional index of `-f`.
+
+See also: `JopFft` in the `JetPackTransforms` package.
+"""
 JetSSpace(_T::Type{T}, n::NTuple{N,Int}, M::NTuple{N,Int}, map::F) where {T,N,F} = JetSSpace{T,N,F}(n, M, map)
 
 Base.size(R::JetSSpace) = R.n
@@ -300,6 +530,23 @@ function jops_comp(op::JopAdjoint{J,T}) where {D,R,J<:Jet{D,R,typeof(JetComposit
     ntuple(i->JopAdjoint(ops[n-i+1]), n)
 end
 
+"""
+    :∘(A₂, A₁)
+
+Construct the composition of the two `Jets` operators.  Note that when applying the composition
+operator, operators are applied in order from right to left: first `A₁` and then `A₂`.
+
+# Example
+```julia
+using Jets
+dg!(d,m;mₒ) = @. d = 2*m
+A₁ = JopLn(Jet(;dom=JetSpace(Float64,2), rng=JetSpace(Float64,2), df! = dg!))
+A₂ = JopLn(Jet(;dom=JetSpace(Float64,2), rng=JetSpace(Float64,2), df! = dg!))
+C = A₂ ∘ A₁
+m = rand(domain(C))
+d = C * m
+```
+"""
 Base.:∘(A₂::Union{JopAdjoint,JopLn}, A₁::Union{JopAdjoint,JopLn}) = JopLn(JetComposite((jops_comp(A₂)..., jops_comp(A₁)...)))
 Base.:∘(A₂::Jop, A₁::Jop) = JopNl(JetComposite((jops_comp(A₂)..., jops_comp(A₁)...)))
 Base.:∘(A₂::AbstractMatrix, A₁::AbstractMatrix) = A₂*A₁
@@ -409,13 +656,35 @@ sgns(op::JopLn{J}, r) where {D,R,J<:Jet{D,R,typeof(JetSum_f!)}} = ntuple(i->flip
 sgns(op::JopNl{J}, r) where {D,R,J<:Jet{D,R,typeof(JetSum_f!)}} = ntuple(i->flipsgn(state(op).sgns[i],r), length(state(op).sgns))
 sgns(op::JopAdjoint{J,T}, r) where {D,R,J<:Jet{D,R,typeof(JetSum_f!)},T<:JopLn{J}} = ntuple(i->flipsgn(state(op).sgns[i],r), length(state(op.op).sgns))
 
+"""
+    :+(A₂, A₁)
+
+Construct and return the linear combination of the two `Jets` operators `A₁::Jop` and `A₂::Jop`.
+Note that `A₁` and `A₂` must have consistent (same size and type) domains and ranges.
+
+# Example
+```
+A = 1.0*A₁ - 2.0*A₂ + 3.0*A₃
+```
+"""
 Base.:+(A₂::Union{JopAdjoint,JopLn}, A₁::Union{JopAdjoint,JopLn}) = JopLn(JetSum((jops_sum(A₂)..., jops_sum(A₁)...), (sgns(A₂,+)..., sgns(A₁,+)...)))
 Base.:+(A₂::Jop, A₁::Jop) = JopNl(JetSum((jops_sum(A₂)..., jops_sum(A₁)...), (sgns(A₂,+)..., sgns(A₁,+)...)))
-Base.:-(A₂::Union{JopAdjoint,JopLn}, A₁::Union{JopAdjoint,JopLn}) = JopLn(JetSum((jops_sum(A₂)..., jops_sum(A₁)...), (sgns(A₂,+)..., sgns(A₁,-)...)))
-Base.:-(A₂::Jop, A₁::Jop) = JopNl(JetSum((jops_sum(A₂)..., jops_sum(A₁)...), (sgns(A₂,+)..., sgns(A₁,-)...)))
-
 Base.:+(A₂::Jop, A₁::AbstractMatrix) = A₂ + JopLn(;dom = domain(A₁), rng = range(A₁), df! = _matmul_df!, df′! = _matmul_df′!, s=(A=A₁,))
 Base.:+(A₂::AbstractMatrix, A₁::Jop) = JopLn(;dom = domain(A₂), rng = range(A₂), df! = _matmul_df!, df′! = _matmul_df′!, s=(A=A₂,)) + A₁
+
+"""
+    :-(A₂, A₁)
+
+Construct and return the linear combination of the two `Jets` operators `A₁::Jop` and `A₂::Jop`.
+Note that `A₁` and `A₂` must have consistent (same size and type) domains and ranges.
+
+# Example
+```
+A = 1.0*A₁ - 2.0*A₂ + 3.0*A₃
+```
+"""
+Base.:-(A₂::Union{JopAdjoint,JopLn}, A₁::Union{JopAdjoint,JopLn}) = JopLn(JetSum((jops_sum(A₂)..., jops_sum(A₁)...), (sgns(A₂,+)..., sgns(A₁,-)...)))
+Base.:-(A₂::Jop, A₁::Jop) = JopNl(JetSum((jops_sum(A₂)..., jops_sum(A₁)...), (sgns(A₂,+)..., sgns(A₁,-)...)))
 Base.:-(A₂::Jop, A₁::AbstractMatrix) = A₂ - JopLn(;dom = domain(A₁), rng = range(A₁), df! = _matmul_df!, df′! = _matmul_df′!, s=(A=A₁,))
 Base.:-(A₂::AbstractMatrix, A₁::Jop) = JopLn(;dom = domain(A₂), rng = range(A₂), df! = _matmul_df!, df′! = _matmul_df′!, s=(A=A₂,)) - A₁
 
@@ -466,8 +735,50 @@ Base.size(R::JetBSpace) = (R.indices[end][end],)
 Base.eltype(R::Type{JetBSpace{T,S}}) where {T,S} = T
 Base.eltype(R::Type{JetBSpace{T}}) where {T} = T
 
+"""
+    indices(R, iblock)
+
+Return the linear indices associated with block `iblock` in the `Jets` block space
+`R::JetBSpace`.
+
+# Example
+Consider a block operator with 2 row-blocks and 3 column-blocks.  We can use `indices`
+to determine the elements of the vector that are associatd with the first block of its
+domain:
+```
+using Pkg
+pkg"add JetPack"
+using Jets, JetPack
+A = @blockop [JopDiagonal(rand(10)) for irow=1:2, icol=1:3]
+indices(domain(A), 1) # returns indices 1:10
+```
+"""
 indices(R::JetBSpace, iblock::Integer) = R.indices[iblock]
+
+"""
+    space(R, iblock)
+
+Return the `Jets` sub-space associated with block `iblock` in the `Jets` block space
+`R::JetBSpace`.
+
+# Example
+Consider a block operator with 2 row-blocks and 3 column-blocks.  We can use `space` to
+determine the sub-space associated with the first block of its domain:
+```
+using Pkg
+Pkg.add("Jets", "JetPack")
+using Jets, JetPack
+A = @blockop [JopDiagonal(rand(10)) for irow=1:2, icol=1:3]
+space(domain(A), 1) # JetSpace(Float64,10)
+```
+"""
 space(R::JetBSpace, iblock::Integer) = R.spaces[iblock]
+
+"""
+    nblocks(R)
+
+Return the number of blocks in the `Jets` block space `R::JetBSpace`.
+"""
 nblocks(R::JetBSpace) = length(R.spaces)
 nblocks(R::JetAbstractSpace) = 1
 
@@ -593,9 +904,20 @@ JopBlock(ops::AbstractMatrix{T}; kwargs...) where {T<:Union{JopLn,JopAdjoint}} =
 JopBlock(ops::AbstractMatrix{T}; kwargs...) where {T<:Jop} = JopNl(JetBlock(ops; kwargs...))
 JopBlock(ops::AbstractVector{T}; kwargs...) where {T<:Jop} = JopBlock(reshape(ops, length(ops), 1); kwargs...)
 
+"""
+    JopZeroBlock(dom, rng)
+
+Construct a Jets operator that is equivalent to a matrix of zeros, and that maps from `dom::JetAbstractSpace`
+to `rng::JetAbstractSpace`.  This can be useful when forming block operators that contain zero blocks.
+"""
 JopZeroBlock(dom::JetAbstractSpace, rng::JetAbstractSpace) = JopLn(df! = JopZeroBlock_df!, dom = dom, rng = rng)
 JopZeroBlock_df!(d, m; kwargs...) = d .= 0
 
+"""
+    iszero(A::Union{Jet, Jop})
+
+Return true if `A` was constructed via `JopZeroBlock`.
+"""
 Base.iszero(jet::Jet{D,R,typeof(JopZeroBlock_df!)}) where {D<:JetAbstractSpace,R<:JetAbstractSpace} = true
 Base.iszero(jet::Jet) = false
 Base.iszero(A::Jop) = iszero(jet(A))
@@ -604,6 +926,29 @@ macro blockop(ex)
     :(JopBlock($(esc(ex))))
 end
 
+"""
+    @blockop(ex, kwargs)
+
+Construct a `Jets` block operator, a combination of Jet operators
+analogous to a block matrix.
+
+# Examples
+example with 1 row-block and 3 column-blocks:
+```julia
+using Pkg
+pkg"add JetPack"
+using Jets, JetPack
+A = @blockop [JopDiagonal(rand(10)) for icol=1:3]
+```
+
+example with 2 row-blocks and 3 column-blocks.
+```
+using Pkg
+pkg"add JetPack"
+using Jets, JetPack
+A = @blockop [JopDiagonal(rand(10)) for irow=1:2, icol=1:3]
+```
+"""
 macro blockop(ex, kw)
     :(JopBlock($(esc(ex)); $(esc(kw))))
 end
@@ -692,11 +1037,23 @@ function point!(j::Jet{D,R,typeof(JetBlock_f!)}, mₒ::AbstractArray) where {D<:
     j
 end
 
+"""
+    nblocks(A[, i])
+
+Return the number of blocks in the range and domain of the `Jets` block operator `A::Union{Jet, Jop}`.
+With `i` specified, return `nblocks(range(jet))` for `i = 1` and return `nblocks(domain(jet))` otherwise.
+"""
 nblocks(jet::Jet) = (nblocks(range(jet)), nblocks(domain(jet)))
 nblocks(jet::Jet, i) = i == 1 ? nblocks(range(jet)) : nblocks(domain(jet))
 nblocks(A::Jop) = (nblocks(range(A)), nblocks(domain(A)))
 nblocks(A::Jop, i) = i == 1 ? nblocks(range(A)) : nblocks(domain(A))
 
+"""
+    getblock(A, i, j)
+
+Return the block of the Jets block operator `A` that corresponds to row block `i`
+and column block `j`.
+"""
 getblock(jet::Jet{D,R,typeof(JetBlock_f!)}, i, j) where {D,R} = state(jet).ops[i,j]
 getblock(A::JopLn{T}, i, j) where {T<:Jet} = JopLn(getblock(jet(A), i, j))
 getblock(A::JopNl{T}, i, j) where {T<:Jet} = getblock(jet(A), i, j)
@@ -704,6 +1061,11 @@ getblock(A::T, i, j) where {J<:Jet,T<:JopAdjoint{J}} = getblock(A.op, j, i)'
 getblock(::Type{JopNl}, A::Jop{T}, i, j) where {T<:Jet} = getblock(jet(A), i, j)::JopNl
 getblock(::Type{JopLn}, A::Jop{T}, i, j) where {T<:Jet} = JopLn(getblock(jet(A), i, j))
 
+"""
+    isblockop(A)
+
+Return true if `A` is a Jets block operator.
+"""
 isblockop(A::Jop{<:Jet{<:JetAbstractSpace,<:JetAbstractSpace,typeof(JetBlock_f!)}}) = true
 isblockop(A::Jop) = false
 
@@ -740,6 +1102,11 @@ end
 #
 # utilities
 #
+"""
+    convert(Array, A::JopLn)
+
+Convert a linear Jets operator into its equivalent matrix.
+"""
 function Base.convert(::Type{T}, A::Jop) where {T<:Array}
     m = zeros(domain(A))
     d = zeros(range(A))
@@ -753,6 +1120,28 @@ function Base.convert(::Type{T}, A::Jop) where {T<:Array}
     B
 end
 
+"""
+    lhs,rhs = dot_product_test(A, m, d; mmask, dmask)
+
+Compute and return the left and right hand sides of the *dot product test*:
+
+``<d,Am> \approx <A^Hd,m>``
+
+Here ``A^H`` is the conjugate transpose or adjoint of ``A``, and ``<x, y>`` denotes the inner
+product of vectors ``x`` and ``y``. The left and right hand sides of the dot product test are
+expected to be equivalent close to machine precision for operator ``A``. If the equality does not
+hold this can indicate a problem with the implementation of the operator ``A``.
+
+This function provides the optional named arguments `mmask` and `dmask` which are vectors in the
+domain and range of `A` that are applied via elementwise multiplication to mask the vectors
+`m` and `d` before applying of the operator, as shown below. Here we use `∘` to represent
+the Hadamard product (elementwise multiplication) of two vectors.
+
+``<dmask ∘ d, A (mmask ∘ m)> ≈ <Aᵀ (dmask ∘ d), mmask ∘ m>``
+
+You can test the relative accuracy of the operator with this relation for the left hand side `lhs` and
+right hand side `rhs` returned by this function: ``|lhs - rhs| / |lhs + rhs| < ϵ``.
+"""
 function dot_product_test(op::JopLn, m::AbstractArray, d::AbstractArray; mmask=[], dmask=[])
     mmask = length(mmask) == 0 ? ones(domain(op)) : mmask
     dmask = length(dmask) == 0 ? ones(range(op)) : dmask
@@ -770,6 +1159,13 @@ function dot_product_test(op::JopLn, m::AbstractArray, d::AbstractArray; mmask=[
     end
 end
 
+"""
+    μobs, μexp = linearization_test(F, mₒ; μ)
+
+Thest that the jacobian, ``J``, of ``F`` satisfies the Taylor expansion:
+
+``F(m) = F(m_o) + F'(m_o)δm + O(δm^2)``
+"""
 function linearization_test(F::JopNl, mₒ::AbstractArray;
         μ=[1.0, 0.5, 0.25, 0.125, 0.0625, 0.03125], δm=[], mmask=[], dmask = [], seed=Inf)
     mmask = length(mmask) == 0 ? ones(domain(F)) : mmask
@@ -804,6 +1200,12 @@ function linearization_test(F::JopNl, mₒ::AbstractArray;
     μobs, μexp
 end
 
+"""
+    lhs,rhs = linearity_test(A::Jop)
+
+test the the linear Jet operator `A` satisfies the following test
+for linearity: ``A(m_1+m_2)=Am_1 + A_m2``.
+"""
 function linearity_test(A::Union{JopLn,JopAdjoint})
     m1 = -1 .+ 2 * rand(domain(A))
     m2 = -1 .+ 2 * rand(domain(A))
