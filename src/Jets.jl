@@ -299,15 +299,13 @@ state(A::Jop) = state(jet(A))
 state(A::Jop, key) = state(jet(A), key)
 state!(A::Jop, s) = state!(jet(A), s)
 perfstat(A::Jop) = perfstat(jet(A))
-
 Base.close(A::Jop) = close(jet(A))
 
 domain(A::Jop) = domain(jet(A))
-domain(A::JopAdjoint) = range(A.op)
-domain(A::AbstractMatrix{T}) where {T} = JetSpace(T, size(A,2))
-
 Base.range(A::Jop) = range(jet(A))
+domain(A::JopAdjoint) = range(A.op)
 Base.range(A::JopAdjoint) = domain(A.op)
+domain(A::AbstractMatrix{T}) where {T} = JetSpace(T, size(A,2))
 Base.range(A::AbstractMatrix{T}) where {T} = JetSpace(T, size(A,1))
 
 function shape(A::Union{Jet,Jop}, i)
@@ -488,6 +486,7 @@ function Base.copyto!(dest::SymmetricArray{T,N}, bc::Broadcast.Broadcasted{Nothi
     copyto!(parent(dest), get_symmetricarray_parent(bc, S))
     dest
 end
+# -->
 
 for f in (:ones, :rand, :zeros)
     @eval (Base.$f)(R::JetSSpace{T,N,F}) where {T,N,F} = SymmetricArray(($f)(T,R.M), R.n, R.map)::SymmetricArray{T,N,F}
@@ -497,6 +496,7 @@ Base.Array(R::JetSSpace{T,N,F}) where {T,N,F} = SymmetricArray{T,N,F}(Array{T,N}
 #
 # composition, f ∘ g
 #
+
 JetComposite(ops) = Jet(f! = JetComposite_f!, df! = JetComposite_df!, df′! = JetComposite_df′!, dom = domain(ops[end]), rng = range(ops[1]), s = (ops=ops,))
 
 function JetComposite_f!(d::T, m; ops, kwargs...) where {T<:AbstractArray}
