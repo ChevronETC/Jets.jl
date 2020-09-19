@@ -1,24 +1,25 @@
 # Jets.jl contributor guidelines
 
 ## Issue reporting
-If you have found a bug in AzManagers.jl or have any suggestions for changes to
-AzManagers.jl functionality, please consider filing an issue using the GitHub
+If you have found a bug in Jets.jl or have any suggestions for changes to
+Jets.jl functionality, please consider filing an issue using the GitHub
 issue tracker.  Please do not forget to search for an existing issue
 which may already cover your suggestion.
 
 ## Contributing
 We try to follow GitHub flow (https://guides.github.com/introduction/flow/) for
-making changes to AzManagers.jl.  Contributors retain copyright on their
-contributions, and the Eclipse public license
-(https://www.eclipse.org/legal/epl-v10.html) applies to the contribution.
+making changes to Jets.jl.
+
+Contributors retain copyright on their contributions, and the MIT license
+(https://opensource.org/licenses/MIT) applies to the contribution.
 
 The basic steps to making a contribution are as follows, and assume some knowledge of
 git:
-  1. fork the AzManagers.jl repository
+  1. fork the Jets.jl repository
   2. create an appropriately titled branch for your contribution
   3. if applicable, add a unit-test to ensure the functionality of your contribution
   (see the `test` subfolder).
-  4. run `]test AzManagers`
+  4. run `]test Jets` in the `test` folder
   5. make a pull-request
   6. have fun
 
