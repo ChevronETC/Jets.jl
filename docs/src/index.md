@@ -3,20 +3,20 @@
 Jets is a Julia library for matrix-free linear algebra and nonlinear optimization.
 
 Other Julia packages that provide similar functionality include:
-- LinearMaps https://github.com/Jutho/LinearMaps.jl 
-- FunctionalOperators https://github.com/hakkelt/FunctionOperators.jl 
-- AbstractOperators https://github.com/kul-forbes/AbstractOperators.jl 
-- JOLI https://github.com/slimgroup/JOLI.jl 
-- BlockArrays https://github.com/JuliaArrays/BlockArrays.jl 
+- LinearMaps - <https://github.com/Jutho/LinearMaps.jl>
+- FunctionalOperators - <https://github.com/hakkelt/FunctionOperators.jl>
+- AbstractOperators - <https://github.com/kul-forbes/AbstractOperators.jl>
+- JOLI - <https://github.com/slimgroup/JOLI.jl>
+- BlockArrays - <https://github.com/JuliaArrays/BlockArrays.jl> 
 
-The purpose of Jets is to provide familiar matrix-vector syntax without forming matrices. Instead, the action of the matrix and its adjoint applied to vectors is specified using Julia methods. In addition, Jets provides a framework for nonlinear functions and their linearization. The main construct in this package is a `jet` and is loosely based on its mathematical namesake (https://en.wikipedia.org/wiki/Jet_(mathematics)). In particular,  a `jet` describes a function and its linearization at some point in its domain.
+The purpose of Jets is to provide familiar matrix-vector syntax without forming matrices. Instead, the action of the matrix and its adjoint applied to vectors is specified using Julia methods. In addition, Jets provides a framework for nonlinear functions and their linearization. The main construct in this package is a `jet` and is loosely based on its mathematical namesake (<https://en.wikipedia.org/wiki/Jet_(mathematics)>). In particular,  a `jet` describes a function and its linearization at some point in its domain.
 
 ## Companion packages in the COFII framework
-- DistributedJets - https://github.com/ChevronETC/DistributedJets.jl
-- JetPack - https://github.com/ChevronETC/JetPack.jl
-- JetPackDSP - https://github.com/ChevronETC/JetPackDSP.jl
-- JetPackWave - https://github.com/ChevronETC/JetPackWave.jl
-- JetPackTransforms - https://github.com/ChevronETC/JetPackTransforms.jl
+- DistributedJets - <https://github.com/ChevronETC/DistributedJets.jl>
+- JetPack - <https://github.com/ChevronETC/JetPack.jl>
+- JetPackDSP - <https://github.com/ChevronETC/JetPackDSP.jl>
+- JetPackWave - <https://github.com/ChevronETC/JetPackWave.jl>
+- JetPackTransforms - <https://github.com/ChevronETC/JetPackTransforms.jl>
 
 ## Vector spaces
 The domain and range of a jet are vector spaces. In `Jets`, a vector space is represented by one of three concrete types:
