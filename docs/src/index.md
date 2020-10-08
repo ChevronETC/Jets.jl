@@ -15,7 +15,7 @@ The purpose of Jets is to provide familiar matrix-vector syntax without forming 
 - DistributedJets - <https://github.com/ChevronETC/DistributedJets.jl>
 - JetPack - <https://github.com/ChevronETC/JetPack.jl>
 - JetPackDSP - <https://github.com/ChevronETC/JetPackDSP.jl>
-- JetPackWave - <https://github.com/ChevronETC/JetPackWave.jl>
+- JetPackWaveFD - <https://github.com/ChevronETC/JetPackWaveFD.jl>
 - JetPackTransforms - <https://github.com/ChevronETC/JetPackTransforms.jl>
 
 ## Vector spaces
