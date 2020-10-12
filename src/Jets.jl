@@ -747,7 +747,7 @@ to determine the elements of the vector that are associatd with the first block 
 domain:
 ```
 using Pkg
-pkg"add JetPack"
+pkg"add Jets JetPack"
 using Jets, JetPack
 A = @blockop [JopDiagonal(rand(10)) for irow=1:2, icol=1:3]
 indices(domain(A), 1) # returns indices 1:10
@@ -766,7 +766,7 @@ Consider a block operator with 2 row-blocks and 3 column-blocks.  We can use `sp
 determine the sub-space associated with the first block of its domain:
 ```
 using Pkg
-Pkg.add("Jets", "JetPack")
+pkg"add Jets JetPack"
 using Jets, JetPack
 A = @blockop [JopDiagonal(rand(10)) for irow=1:2, icol=1:3]
 space(domain(A), 1) # JetSpace(Float64,10)
@@ -936,7 +936,7 @@ analogous to a block matrix.
 example with 1 row-block and 3 column-blocks:
 ```julia
 using Pkg
-pkg"add JetPack"
+pkg"add Jets JetPack"
 using Jets, JetPack
 A = @blockop [JopDiagonal(rand(10)) for icol=1:3]
 ```
@@ -944,7 +944,7 @@ A = @blockop [JopDiagonal(rand(10)) for icol=1:3]
 example with 2 row-blocks and 3 column-blocks.
 ```
 using Pkg
-pkg"add JetPack"
+pkg"add Jets JetPack"
 using Jets, JetPack
 A = @blockop [JopDiagonal(rand(10)) for irow=1:2, icol=1:3]
 ```
