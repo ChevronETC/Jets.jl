@@ -1,5 +1,8 @@
 using Jets, LinearAlgebra, Random, Test
 
+# set random seed to promote repeatability in CI unit tests
+Random.seed!(101)
+
 JopFoo_df!(d,m;diagonal,kwargs...) = d .= diagonal .* m
 function JopFoo(diag)
     spc = JetSpace(Float64, length(diag))
