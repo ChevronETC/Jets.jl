@@ -372,9 +372,9 @@ Base.adjoint(A::JopAdjoint) = A.op
 
 In place version of `d=F*m` where F is a Jets linear (e.g. `JopLn`) or nonlinear (`JopNl`) operator.
 """
-LinearAlgebra.mul!(d::AbstractArray, F::JopNl, m::AbstractArray) = f!(d, jet(F), m; state(F)...)
-LinearAlgebra.mul!(d::AbstractArray, A::JopLn, m::AbstractArray) = df!(d, jet(A), m; mₒ=point(A), state(A)...)
-LinearAlgebra.mul!(m::AbstractArray, A::JopAdjoint{J,T}, d::AbstractArray) where {J<:Jet,T<:JopLn} = df′!(m, jet(A), d; mₒ=point(A), state(A)...)
+LinearAlgebra.mul!(d::AbstractArray, F::JopNl, m::AbstractArray) = f!(reshape(d, range(F)), jet(F), reshape(m, domain(F)); state(F)...)
+LinearAlgebra.mul!(d::AbstractArray, A::JopLn, m::AbstractArray) = df!(reshape(d, range(A)), jet(A), reshape(m, domain(A)); mₒ=point(A), state(A)...)
+LinearAlgebra.mul!(m::AbstractArray, A::JopAdjoint{J,T}, d::AbstractArray) where {J<:Jet,T<:JopLn} = df′!(reshape(m, range(A)), jet(A), reshape(d, domain(A)); mₒ=point(A), state(A)...)
 
 """
     :*(F, m)
@@ -1082,6 +1082,7 @@ function getblock(jet::Jet{D,R,typeof(JetComposite_f!)}, i, j) where {D,R}
 end
 
 Base.reshape(x::AbstractArray, R::JetBSpace) = BlockArray([view(x, R.indices[i]) for i=1:length(R.indices)], R.indices)
+Base.reshape(x::BlockArray, R::JetBSpace) = x
 
 function Base.close(j::Jet{D,R,typeof(JetBlock_f!)}) where {D,R}
     ops = state(j).ops
