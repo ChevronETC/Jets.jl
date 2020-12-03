@@ -372,9 +372,13 @@ Base.adjoint(A::JopAdjoint) = A.op
 
 In place version of `d=F*m` where F is a Jets linear (e.g. `JopLn`) or nonlinear (`JopNl`) operator.
 """
-LinearAlgebra.mul!(d::AbstractArray, F::JopNl, m::AbstractArray) = f!(reshape(d, range(F)), jet(F), reshape(m, domain(F)); state(F)...)
-LinearAlgebra.mul!(d::AbstractArray, A::JopLn, m::AbstractArray) = df!(reshape(d, range(A)), jet(A), reshape(m, domain(A)); mₒ=point(A), state(A)...)
-LinearAlgebra.mul!(m::AbstractArray, A::JopAdjoint{J,T}, d::AbstractArray) where {J<:Jet,T<:JopLn} = df′!(reshape(m, range(A)), jet(A), reshape(d, domain(A)); mₒ=point(A), state(A)...)
+LinearAlgebra.mul!(d::AbstractArray, F::JopNl, m::AbstractArray) = f!(d, jet(F), m; state(F)...)
+LinearAlgebra.mul!(d::AbstractArray, A::JopLn, m::AbstractArray) = df!(d, jet(A), m; mₒ=point(A), state(A)...)
+LinearAlgebra.mul!(m::AbstractArray, A::JopAdjoint{J,T}, d::AbstractArray) where {J<:Jet,T<:JopLn} = df′!(m, jet(A), d; mₒ=point(A), state(A)...)
+
+LinearAlgebra.mul!(d::AbstractVector, F::JopNl, m::AbstractVector) = vec(f!(reshape(d, range(F)), jet(F), reshape(m, domain(F)); state(F)...))
+LinearAlgebra.mul!(d::AbstractVector, A::JopLn, m::AbstractVector) = vec(df!(reshape(d, range(A)), jet(A), reshape(m, domain(A)); mₒ=point(A), state(A)...))
+LinearAlgebra.mul!(m::AbstractVector, A::JopAdjoint{J,T}, d::AbstractVector) where {J<:Jet,T<:JopLn} = vec(df′!(reshape(m, range(A)), jet(A), reshape(d, domain(A)); mₒ=point(A), state(A)...))
 
 """
     :*(F, m)
@@ -382,6 +386,8 @@ LinearAlgebra.mul!(m::AbstractArray, A::JopAdjoint{J,T}, d::AbstractArray) where
 Constructs `F*m` where F is a Jets linear (e.g. `JopLn`) or nonlinear (`JopNl`) operator.
 """
 Base.:*(A::Jop, m::AbstractArray) = mul!(zeros(range(A)), A, m)
+Base.:*(A::Jop{J}, m::AbstractVector) where {T, D<:JetAbstractSpace{T,1}, J<:Jet{D}} = mul!(zeros(range(A)), A, m)
+Base.:*(A::Jop, m::AbstractVector) = mul!(vec(zeros(range(A))), A, m)
 
 Base.show(io::IO, A::JopLn) = show(io, "Jet linear operator, $(size(domain(A))) → $(size(range(A)))")
 Base.show(io::IO, A::JopAdjoint) = show(io, "Jet adjoint operator, $(size(domain(A))) → $(size(range(A)))")
