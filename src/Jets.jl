@@ -63,6 +63,7 @@ JetSpace(_T::Type{T}, n::NTuple{N,Int}) where {T,N} = JetSpace{T,N}(n)
 Base.size(R::JetSpace) = R.n
 Base.eltype(R::Type{JetSpace{T,N}}) where {T,N} = T
 Base.eltype(R::Type{JetSpace{T}}) where {T} = T
+Base.vec(R::JetSpace) = JetSpace(eltype(R), length(R))
 
 @doc """
     Array(R)
@@ -1088,6 +1089,36 @@ function Base.close(j::Jet{D,R,typeof(JetBlock_f!)}) where {D,R}
     close.(ops)
     nothing
 end
+
+#
+# Vectorized operator
+#
+JetVec(op::Jop) = Jet(f! = JetVec_f!, df! = JetVec_df!, df′! = JetVec_df′!, dom = vec(range(op)), rng = vec(range(op)), s=(op=op,))
+JetVec(op::Jop{<:J}) where {T,U,D<:JetAbstractSpace{T,1},R<:JetAbstractSpace{T,1},J<:Jet{D,R}} = op
+JopVec(op::Union{JopLn,JopAdjoint}) = JopLn(JetVec(op))
+JopVec(op::Jop) = JopNl(JetVec(op))
+
+JetVec_f!(d::T, m::AbstractVector; op, kwargs...) where {T<:AbstractVector} = vec(mul!(reshape(d, range(op)), op, reshape(m, domain(op))))::T
+JetVec_df!(d::T, m::AbstractVector; op, kwargs...) where {T<:AbstractVector} = vec(mul!(reshape(d, range(op)), JopLn(op), reshape(m, range(op))))::T
+JetVec_df′!(m::T, d::AbstractVector; op, kwargs...) where {T<:AbstractVector} = vec(mul!(reshape(m, domain(op)), JopLn(op)', reshape(d,range(op))))::T
+
+"""
+    B = vec(A)
+
+B is equivelent to A except that its domain and range are "vectorized".  This is
+useful when calling algorithms that expect vectors in the domain and range of the
+operator.  One example of this is the `lsqr` method in the IterativeSolvers package.
+
+# Example
+```julia
+using Jets, JetPack, IterativeSolvers
+
+A = JopDiagonal(rand(10,11))
+d = rand(range(A))
+m = lsqr(vec(A), vec(d))
+```
+"""
+Base.vec(op::Jop) = JopVec(op)
 
 #
 # multiply operator by a scalar

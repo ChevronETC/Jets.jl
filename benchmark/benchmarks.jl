@@ -110,10 +110,10 @@ SUITE["Block, homogeneous"]["domain"] = @benchmarkable domain($F)
 SUITE["Block, homogeneous"]["range"] = @benchmarkable range($F)
 SUITE["Block, homogeneous"]["block"] = @benchmarkable getblock($m, 2)
 SUITE["Block, homogeneous"]["block!"] = @benchmarkable setblock!($m, 2, $(rand(100)))
-SUITE["Block, homogeneous"]["broadcast"] = @benchmarkable f .= d .+ e
-SUITE["Block, homogeneous"]["broadcast (base-case)"] = @benchmarkable f′ .= d′ .+ e′
-SUITE["Block, homogeneous"]["fill!"] = @benchmarkable f .= $(rand())
-SUITE["Block, homogeneous"]["fill! (base-case)"] = @benchmarkable f′ .= $(rand())
+SUITE["Block, homogeneous"]["broadcast"] = @benchmarkable $f .= $d .+ $e
+SUITE["Block, homogeneous"]["broadcast (base-case)"] = @benchmarkable $f′ .= $d′ .+ $e′
+SUITE["Block, homogeneous"]["fill!"] = @benchmarkable $f .= $(rand())
+SUITE["Block, homogeneous"]["fill! (base-case)"] = @benchmarkable $f′ .= $(rand())
 SUITE["Block, homogeneous"]["dot"] = @benchmarkable dot($d, $e)
 SUITE["Block, homogeneous"]["dot (base-case)"] = @benchmarkable dot($d′, $e′)
 SUITE["Block, homogeneous"]["norm"] = @benchmarkable norm($d)
@@ -149,10 +149,38 @@ SUITE["Block, heterogeneous"]["domain"] = @benchmarkable domain($F)
 SUITE["Block, heterogeneous"]["range"] = @benchmarkable range($F)
 SUITE["Block, heterogeneous"]["block"] = @benchmarkable getblock($m, 2)
 SUITE["Block, heterogeneous"]["block!"] = @benchmarkable setblock!($d, 2, $(rand(100)))
-SUITE["Block, heterogeneous"]["broadcast"] = @benchmarkable f .= d .+ e
-SUITE["Block, heterogeneous"]["broadcast (base-case)"] = @benchmarkable f′ .= d′ .+ e′
-SUITE["Block, heterogeneous"]["fill!"] = @benchmarkable f .= $(rand())
-SUITE["Block, heterogeneous"]["fill! (base-case)"] = @benchmarkable f′ .= $(rand())
+SUITE["Block, heterogeneous"]["broadcast"] = @benchmarkable $f .= $d .+ $e
+SUITE["Block, heterogeneous"]["broadcast (base-case)"] = @benchmarkable $f′ .= $d′ .+ $e′
+SUITE["Block, heterogeneous"]["fill!"] = @benchmarkable $f .= $(rand())
+SUITE["Block, heterogeneous"]["fill! (base-case)"] = @benchmarkable $f′ .= $(rand())
 SUITE["Block, heterogeneous"]["reshape"] = @benchmarkable reshape($d′, $rangeF)
+
+JopBaz_df!(d,m;diagonal,kwargs...) = d .= diagonal .* m
+function JopBaz(diag)
+    spc = JetSpace(Float64, size(diag))
+    JopLn(;df! = JopBaz_df!, dom = spc, rng = spc, s = (diagonal=diag,))
+end
+F = JopBaz(rand(10,10))
+rng = range(F)
+Fvec = vec(F)
+J = jacobian(F, m)
+Jvec = vec(J)
+m = rand(domain(F))
+d = rand(range(F))
+mvec = vec(m)
+dvec = vec(d)
+SUITE["vec"] = BenchmarkGroup()
+SUITE["vec"]["construct"] = @benchmarkable vec($F)
+SUITE["vec"]["mul!"] = @benchmarkable mul!($dvec, $Fvec, $mvec)
+SUITE["vec"]["mul"] = @benchmarkable $Fvec * $mvec
+SUITE["vec"]["jacobian"] = @benchmarkable jacobian!($Fvec, $mvec)
+SUITE["vec"]["mul!, adjoint"] = @benchmarkable mul!($mvec, ($Jvec)', $dvec)
+SUITE["vec"]["mul, adjoint"] = @benchmarkable ($Jvec)' * $dvec
+SUITE["vec"]["adjoint"] = @benchmarkable ($Jvec)'
+SUITE["vec"]["shape"] = @benchmarkable shape($Fvec)
+SUITE["vec"]["size"] = @benchmarkable size($Fvec)
+SUITE["vec"]["domain"] = @benchmarkable domain($Fvec)
+SUITE["vec"]["range"] = @benchmarkable range($Fvec)
+SUITE["vec"]["vec range"] = @benchmarkable vec($rng)
 
 SUITE

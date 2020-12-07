@@ -71,6 +71,7 @@ ones(R)       # array of ones with the element-type and size of `R`
 rand(R)       # random array with the element-type and size of `R`
 zeros(R)      # zero array with the element-type and size of `R`
 Array(R)      # uninitialized array with the element-type and size of `R`
+vec(R)        # return a similar space, but backed by a one dimensional array
 ```
 
 ## Jets
@@ -206,6 +207,21 @@ _d = rand(eltype(range(A)), size(range(A)))
 d = reshape(_d, range(A))
 ```
 Since `BlockArrays` extend Julia's `AbstractArray` and broadcasting interfaces, most of the functionality of a Julia `Array` is also available for `BlockArray`'s.
+
+## Vectorized operators
+There are libraries that assume that the vectors in the model and data space are backed by one dimensional arrays.  To help with this, Jets provides
+a `vec` method that returns an operator with one dimensional arrays backing the domain and range.  As an example, we show how to compose Jets with
+the `lsqr` method in the IterativeSolvers package.
+```julia
+using Jets, JetPack, IterativeSolvers
+
+A = JopDct(Float64, 128, 64)
+d = rand(range(A))
+m = reshape(lsqr(vec(A), vec(d)), range(A))
+A*m ≈ d # true
+```
+Note that for the case that the domain and range are already backed by one dimensional arrays, `vec` is a no-op.  Further, note that a block array
+is a one dimensional array.  
 
 ## Creating a new Jet (Developers) 
 To build a new jet, provide the function that maps from the domain to the range, its linearization and a default state. We will show three examples: 1) linear operator, 2) self-adjoint linear operator, 3) nonlinear operator.

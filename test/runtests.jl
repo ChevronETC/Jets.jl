@@ -48,6 +48,12 @@ function JopRosenbrock()
         upstate! = JopRosenbrock_upstate!, dom = dom, rng = rng, s = (J=[-1.0 0.0;0.0 10.0],))
 end
 
+JopFoo2_df!(d,m;diagonal,kwargs...) = d .= diagonal .* m
+function JopFoo2(diag)
+    spc = JetSpace(Float64, size(diag))
+    JopLn(;df! = JopFoo2_df!, dom = spc, rng = spc, s = (diagonal=diag,))
+end
+
 @testset "JetSpace, construction, n=$n, T=$T" for n in ((2,),(2,3),(2,3,4)), T in (Float32,Float64,Complex{Float32},Complex{Float64})
     N = length(n)
     R = JetSpace(T, n...)
@@ -740,6 +746,28 @@ end
     m = rand(domain(A))
     B = a*A
     @test B*m ≈ a*(A*m)
+end
+
+@testset "vectorized operator" begin
+    A = JopFoo2(rand(10,11))
+    x = rand(domain(A))
+    
+    @test size(vec(domain(A))) == (10*11,)
+    
+    B = vec(A)
+    @test isa(jet(B), Jet{<:JetAbstractSpace,<:JetAbstractSpace,typeof(Jets.JetVec_f!)})
+    
+    d = A * x
+    _d = vec(A) * vec(x)
+    __d = reshape(_d, range(A))
+    @test d[:] ≈ _d
+    @test __d ≈ d
+    @test size(d) == (10,11)
+    @test size(_d) == (10*11,)
+    @test size(__d) == (10,11)
+
+    C = JopFoo(rand(10,11))
+    @test isa(jet(C), Jet{<:JetAbstractSpace,<:JetAbstractSpace,typeof(JopFoo_df!)})
 end
 
 @testset "close op" begin
