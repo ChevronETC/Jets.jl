@@ -1210,7 +1210,6 @@ function linearization_test(F::JopNl, mₒ::AbstractArray;
     else
         δm .*= mmask
     end
-    δm ./= maximum(abs, δm)
 
     Fₒ = F*mₒ
     Jₒ = jacobian!(F, mₒ)
