@@ -770,6 +770,27 @@ end
     @test isa(jet(C), Jet{<:JetAbstractSpace,<:JetAbstractSpace,typeof(JopFoo_df!)})
 end
 
+@testset "vectorized block operator" begin
+    A = @blockop [JopFoo2(rand(10,11)), JopFoo2(rand(10,11))]
+    x = rand(domain(A))
+
+    @test size(vec(domain(A))) == (10*11,)
+    @test size(vec(range(A))) == (2*10*11,)
+    @test size(range(A)) == size(vec(range(A)))
+
+    B = vec(A)
+    @test isa(jet(B), Jet{<:JetAbstractSpace,<:JetAbstractSpace,typeof(Jets.JetVec_f!)})
+
+    d = A * x
+    _d = vec(A) * vec(x)
+    @test d ≈ _d
+
+    a = A' * d
+    _a = vec(A') * d
+    __a = reshape(a, domain(A))
+    @test a ≈ __a
+end
+
 @testset "close op" begin
     A = JopClose(rand(2))
     @test isfile(state(A).file)
