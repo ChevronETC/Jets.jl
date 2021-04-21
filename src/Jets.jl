@@ -804,6 +804,8 @@ end
 
 Base.similar(A::BlockArray, ::Type{T}) where {T} = BlockArray([similar(A.arrays[i], T) for i=1:length(A.arrays)], A.indices)
 Base.similar(A::BlockArray{T}) where {T} = similar(A, T)
+Base.similar(x::BlockArray, ::Type{T}, n::Integer) where {T} = length(x) == n ? similar(x, T) : Array{T}(undef, n)
+Base.similar(x::BlockArray, ::Type{T}, dims::Tuple{Int}) where {T} = similar(x, T, dims[1])
 
 function LinearAlgebra.norm(x::BlockArray{T}, p::Real=2) where {T}
     if p == Inf
