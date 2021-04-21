@@ -735,6 +735,7 @@ end
 Base.size(R::JetBSpace) = (R.indices[end][end],)
 Base.eltype(R::Type{JetBSpace{T,S}}) where {T,S} = T
 Base.eltype(R::Type{JetBSpace{T}}) where {T} = T
+Base.vec(R::JetBSpace) = R
 
 """
     indices(R, iblock)
@@ -1082,7 +1083,13 @@ function getblock(jet::Jet{D,R,typeof(JetComposite_f!)}, i, j) where {D,R}
     mapreduce(identity, ∘, ops)
 end
 
-Base.reshape(x::AbstractArray, R::JetBSpace) = BlockArray([view(x, R.indices[i]) for i=1:length(R.indices)], R.indices)
+Base.reshape(x::AbstractArray, R::JetBSpace) = BlockArray([reshape(view(x, R.indices[i]), R.spaces[i]) for i=1:length(R.indices)], R.indices)
+
+# BlockArrays are vectors
+function Base.reshape(x::BlockArray, R::JetBSpace)
+    length(x) == length(R) || error("dimension mismatch, unable to reshape block array")
+    x
+end
 
 function Base.close(j::Jet{D,R,typeof(JetBlock_f!)}) where {D,R}
     ops = state(j).ops
@@ -1093,13 +1100,13 @@ end
 #
 # Vectorized operator
 #
-JetVec(op::Jop) = Jet(f! = JetVec_f!, df! = JetVec_df!, df′! = JetVec_df′!, dom = vec(range(op)), rng = vec(range(op)), s=(op=op,))
+JetVec(op::Jop) = Jet(f! = JetVec_f!, df! = JetVec_df!, df′! = JetVec_df′!, dom = vec(domain(op)), rng = vec(range(op)), s=(op=op,))
 JetVec(op::Jop{<:J}) where {T,U,D<:JetAbstractSpace{T,1},R<:JetAbstractSpace{T,1},J<:Jet{D,R}} = op
 JopVec(op::Union{JopLn,JopAdjoint}) = JopLn(JetVec(op))
 JopVec(op::Jop) = JopNl(JetVec(op))
 
 JetVec_f!(d::T, m::AbstractVector; op, kwargs...) where {T<:AbstractVector} = vec(mul!(reshape(d, range(op)), op, reshape(m, domain(op))))::T
-JetVec_df!(d::T, m::AbstractVector; op, kwargs...) where {T<:AbstractVector} = vec(mul!(reshape(d, range(op)), JopLn(op), reshape(m, range(op))))::T
+JetVec_df!(d::T, m::AbstractVector; op, kwargs...) where {T<:AbstractVector} = vec(mul!(reshape(d, range(op)), JopLn(op), reshape(m, domain(op))))::T
 JetVec_df′!(m::T, d::AbstractVector; op, kwargs...) where {T<:AbstractVector} = vec(mul!(reshape(m, domain(op)), JopLn(op)', reshape(d,range(op))))::T
 
 """
