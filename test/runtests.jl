@@ -552,6 +552,10 @@ end
     @test convert(Array, z) ≈ x .* convert(Array, y)
 
     x = similar(y, Int)
+    _x = similar(y, Int, length(y))
+    __x = similar(y, Int, (length(y),))
+    @test isa(_x, Jets.BlockArray)
+    @test isa(__x, Jets.BlockArray)
 end
 
 @testset "block array, reshaped from array" begin
