@@ -13,6 +13,7 @@ SUITE["JetSpace"]["rand"] = @benchmarkable rand($s)
 SUITE["JetSpace"]["zeros"] = @benchmarkable zeros($s)
 SUITE["JetSpace"]["ones"] = @benchmarkable ones($s)
 SUITE["JetSpace"]["reshape"] = @benchmarkable reshape($x, $s)
+SUITE["JetSpace"]["construct from array"] = @benchmarkable space(x)
 
 dom = JetSpace(Float64, 20)
 rng = JetSpace(Float64, 10, 2)
