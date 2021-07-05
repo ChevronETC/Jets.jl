@@ -79,6 +79,7 @@ end
     @test size(Array(R)) == size(R)
     @test length(randperm(R, 2)) == 2
     @test typeof(randperm(R, 2)) == Vector{Int}
+    @test R == space(rand(R))
 end
 
 @testset "Jet, construction" begin
@@ -223,6 +224,7 @@ end
     @test norm(x,Inf) ≈ norm(y,Inf)
     x[1,1] = x[6,1] = 0
     @test norm(x,0) ≈ 2*norm(y,0)
+    @test space(rand(R)) == R
 end
 
 @testset "Symmetric spaces, broadcast" begin
@@ -507,6 +509,7 @@ end
     y = abs.(x)
     @test eltype(y) == Float64
     @test y ≈ abs.(_x)
+    @test R == space(rand(R))
 end
 
 @testset "block arrays, broadcasting" begin

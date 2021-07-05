@@ -114,6 +114,8 @@ y = x[randperm(R)[1:10]] # get 10 elements at random from x
 """
 Random.randperm(R::JetAbstractSpace, k::Int) = sort(randperm(length(R))[1:k])
 
+space(x::AbstractArray{T,N}) where {T,N} = JetSpace{T,N}(size(x))
+
 jet_missing(m) = error("not implemented")
 
 mutable struct Jet{D<:JetAbstractSpace,R<:JetAbstractSpace,F<:Function,DF<:Function,DF′<:Function,U<:Function,M<:AbstractArray,S<:NamedTuple}
@@ -430,6 +432,8 @@ struct SymmetricArray{T,N,F<:Function} <: AbstractArray{T,N}
     map::F
 end
 
+space(x::SymmetricArray{T,N,F}) where {T,N,F} = JetSSpace{T,N,F}(x.n, size(x.A), x.map)
+
 Base.parent(A::SymmetricArray) = A.A
 
 # SymmetricArray array interface implementation <--
@@ -732,6 +736,8 @@ struct JetBSpace{T,S<:JetAbstractSpace} <: JetAbstractSpace{T,1}
     end
 end
 
+Base.:(==)(x::JetBSpace, y::JetBSpace) = x.spaces == y.spaces && x.indices == y.indices
+
 Base.size(R::JetBSpace) = (R.indices[end][end],)
 Base.eltype(R::Type{JetBSpace{T,S}}) where {T,S} = T
 Base.eltype(R::Type{JetBSpace{T}}) where {T} = T
@@ -788,6 +794,8 @@ struct BlockArray{T,A<:AbstractArray{T}} <: AbstractArray{T,1}
     arrays::Vector{A}
     indices::Vector{UnitRange{Int}}
 end
+
+space(x::BlockArray) = JetBSpace([space(_x) for _x in x.arrays])
 
 # BlockArray array interface implementation <--
 Base.IndexStyle(::Type{T}) where {T<:BlockArray} = IndexLinear()
