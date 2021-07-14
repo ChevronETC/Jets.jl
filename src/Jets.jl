@@ -1217,7 +1217,7 @@ Thest that the jacobian, `J`, of `F` satisfies the Taylor expansion:
 `F(m) = F(m_o) + F'(m_o)δm + O(δm^2)`
 """
 function linearization_test(F::JopNl, mₒ::AbstractArray;
-        μ=[1.0, 0.5, 0.25, 0.125, 0.0625, 0.03125], δm=[], mmask=[], dmask = [], seed=Inf)
+        μ=[1.0, 0.5, 0.25, 0.125, 0.0625, 0.03125], δm = [], mmask=[], dmask = [], seed=Inf)
     mmask = length(mmask) == 0 ? ones(domain(F)) : mmask
     dmask = length(dmask) == 0 ? ones(range(F)) : dmask
 
@@ -1257,9 +1257,9 @@ for linearity:
     
 `A(m_1+m_2)=Am_1 + A_m2`
 """
-function linearity_test(A::Union{JopLn,JopAdjoint})
-    m1 = -1 .+ 2 * rand(domain(A))
-    m2 = -1 .+ 2 * rand(domain(A))
+function linearity_test(A::Union{JopLn,JopAdjoint}, m1 = [], m2 = [])
+    m1 = length(m1) == 0 ? -1 .* 2 .* rand(domain(A)) : m1
+    m2 = length(m2) == 0 ? -1 .* 2 .* rand(domain(A)) : m2
     lhs = A*(m1 + m2)
     rhs = A*m1 + A*m2
     lhs, rhs
