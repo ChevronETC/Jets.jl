@@ -1250,6 +1250,67 @@ function linearization_test(F::JopNl, mₒ::AbstractArray;
 end
 
 """
+    μobs, μexp = linearization_test_2nd_order_error(F, mₒ; μ)
+
+Thest that the jacobian, `J`, of `F` satisfies the Taylor expansion by computing the 
+linear regression and testing that the slope of the error is 2, indicating that the
+error in the linearization is second order. 
+
+`F(m) = F(m_o) + F'(m_o)δm + O(δm^2)`
+"""
+function linearization_test_2nd_order_error(F::JopNl, mₒ::AbstractArray;
+        μ=[1.0, 0.5, 0.25, 0.125, 0.0625, 0.03125], δm = [], mmask=[], dmask = [], seed=Inf)
+    mmask = length(mmask) == 0 ? ones(domain(F)) : mmask
+    dmask = length(dmask) == 0 ? ones(range(F)) : dmask
+
+    isfinite(seed) && Random.seed!(seed)
+    if length(δm) == 0
+        δm = mmask .* (-1 .+ 2 .* rand(domain(F)))
+    else
+        δm .*= mmask
+    end
+
+    Fₒ = F*mₒ
+    Jₒ = jacobian!(F, mₒ)
+    Jₒδm = Jₒ*δm
+
+    μ = convert(Array{eltype(mₒ)}, sort(μ, rev=true))
+    ϕ = zeros(length(μ))
+
+    for i = 1:length(μ)
+        d_lin  = Fₒ .+ μ[i] .* Jₒδm
+        d_non  = F*(mₒ .+ μ[i] .* δm)
+        ϕ[i] = norm(dmask .* (d_non .- d_lin))
+    end
+
+    lμ = log10.(μ)
+    lϕ = log10.(ϕ)
+    l1 = ones(size(μ))
+
+    # a x + b = y
+    #
+    # | lμ1 1 | [ a ] = | lϕ1 | 
+    # | lμ2 1 | [ b ]   | lϕ2 |
+    # | lμ3 1 |         | lϕ3 |
+    # | lμ4 1 |         | lϕ4 |
+
+    @show μ
+    @show ϕ
+    @show lμ
+    @show lϕ
+    @show l1
+
+    dh = μ[2]/μ[1]
+    A = [lμ l1]
+    m = inv(A'A) * (A'*lϕ)
+
+    @show A
+    @show m
+
+    return m[1]
+end
+
+"""
     lhs,rhs = linearity_test(A::Jop)
 
 test the the linear Jet operator `A` satisfies the following test
@@ -1272,6 +1333,7 @@ CRC32c.crc32c(m::Array{<:Union{UInt32,Float32,Float64,Complex{Float32},Complex{F
 export Jet, JetAbstractSpace, JetBSpace, JetSpace, JetSSpace, Jop, JopAdjoint, JopLn, JopNl,
     JopZeroBlock, @blockop, domain, getblock, getblock!, dot_product_test, getblock,
     getblock!, indices, jacobian, jacobian!, jet, linearity_test, linearization_test,
-    nblocks, perfstat, point, setblock!, shape, space, state, state!, symspace
+    linearization_test_2nd_order_error, nblocks, perfstat, point, setblock!, shape, space, 
+    state, state!, symspace
 
 end
