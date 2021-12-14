@@ -1294,18 +1294,16 @@ function linearization_test_2nd_order_error(F::JopNl, mₒ::AbstractArray;
     # | lμ3 1 |         | lϕ3 |
     # | lμ4 1 |         | lϕ4 |
 
-    @show μ
-    @show ϕ
-    @show lμ
-    @show lϕ
-    @show l1
-
     dh = μ[2]/μ[1]
     A = [lμ l1]
     m = inv(A'A) * (A'*lϕ)
 
     @show A
     @show m
+    @show lϕ
+
+    using  PyPlot
+    
 
     return m[1]
 end
