@@ -80,6 +80,7 @@ end
     @test length(randperm(R, 2)) == 2
     @test typeof(randperm(R, 2)) == Vector{Int}
     @test R == space(rand(R))
+    @test similar(R, ntuple(_->0, N)) == JetSpace(T, ntuple(_->0, N))
 end
 
 @testset "Jet, construction" begin
@@ -225,6 +226,7 @@ end
     x[1,1] = x[6,1] = 0
     @test norm(x,0) ≈ 2*norm(y,0)
     @test space(rand(R)) == R
+    @test similar(R, (0,0)) == JetSSpace{Complex{Float64},2,typeof(indexmap)}((0,0), R.M, R.map)
 end
 
 @testset "Symmetric spaces, broadcast" begin
@@ -578,6 +580,7 @@ end
     for i = 1:5
         @test getblock(_y, i) ≈ A[i]*m
     end
+    @test similar(R, (0,)) == JetSpace(eltype(R), (0,))
 end
 
 @testset "block operator" begin
