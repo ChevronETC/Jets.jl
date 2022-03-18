@@ -57,8 +57,8 @@ Create a 100 dimension space with array element type Float32 and array size (5, 
 R2 = JetSpace(Float32, 5, 20)
 ```
 """
-JetSpace(_T::Type{T}, n::Vararg{Int,N}) where {T,N} = JetSpace{T,N}(n)
-JetSpace(_T::Type{T}, n::NTuple{N,Int}) where {T,N} = JetSpace{T,N}(n)
+JetSpace(::Type{T}, n::Vararg{Int,N}) where {T,N} = JetSpace{T,N}(n)
+JetSpace(::Type{T}, n::NTuple{N,Int}) where {T,N} = JetSpace{T,N}(n)
 
 Base.size(R::JetSpace) = R.n
 Base.eltype(R::Type{JetSpace{T,N}}) where {T,N} = T
@@ -420,7 +420,7 @@ of `f` when given the multi-dimensional index of `-f`.
 
 See also: `JopFft` in the `JetPackTransforms` package.
 """
-JetSSpace(_T::Type{T}, n::NTuple{N,Int}, M::NTuple{N,Int}, map::F) where {T,N,F} = JetSSpace{T,N,F}(n, M, map)
+JetSSpace(::Type{T}, n::NTuple{N,Int}, M::NTuple{N,Int}, map::F) where {T,N,F} = JetSSpace{T,N,F}(n, M, map)
 
 Base.size(R::JetSSpace) = R.n
 Base.eltype(R::Type{JetSSpace{T,N,F}}) where {T,N,F} = T
