@@ -99,18 +99,18 @@ Note that the `f!`, `df!` and `df′!` methods are not exported.
 ```julia
 using Pkg
 Pkg.add("Jets")
-foo!(d, m; a, kwargs...) = d .= x.^a
+foo!(d, m; a, kwargs...) = d .= m.^a
 dfoo!(δd, δm; mₒ, a, kwargs...) = δd .= a * mₒ.^(a-1) .* δm
 jet = Jet(dom = JetSpace(Float64,128), rng = 
-    JetSpace(Float64,128), f! = foo!, df! = dfoo!, s = (a=1.0,))
+    JetSpace(Float64,128), f! = foo!, df! = dfoo!, s = (a=2.0,))
 ```
 
-In the above construction, we define the domain (`dom`), range (`rng`), and a function (`f!`) with its linearization (`df!`). In addition, the jet contains *state*. In this case the state is the value of the exponent `a`. The state is passed to the jet using the named tuple `s = (a=1.0,)`. Notice that construction of the jet uses Julia's named arguments. 
+In the above construction, we define the domain (`dom`), range (`rng`), and a function (`f!`) with its linearization (`df!`). In addition, the jet contains *state*. In this case the state is the value of the exponent `a`. The state is passed to the jet using the named tuple `s = (a=2.0,)`. Notice that construction of the jet uses Julia's named arguments. 
 
 Finally, we note that for this specific example, the construction does not specify the adjoint of the lineariziation. This is because for this specific case the linearization is self-adjoint. An equivalent construction that explicitly includes the adjoint is:
 ```julia
 jet = Jet(dom = JetSpace(Float64,128), rng = 
-    JetSpace(Float64,128), f! = foo!, df! = dfoo!, df′! = dfoo!, s=(a=1.0,))
+    JetSpace(Float64,128), f! = foo!, df! = dfoo!, df′! = dfoo!, s=(a=2.0,))
 ```
 
 ## Linear and nonlinear operators
