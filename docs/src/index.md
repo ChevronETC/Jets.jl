@@ -19,7 +19,7 @@ The purpose of Jets is to provide familiar matrix-vector syntax without forming 
 - JetPackTransforms - <https://github.com/ChevronETC/JetPackTransforms.jl>
 
 ## Installation
-Jets as well as its companion packages can be installed via the Julia buil-in package manager `Pkg`:
+Jets as well as its companion packages can be installed via the Julia built-in package manager `Pkg`:
 ```julia
 using Pkg
 Pkg.add(["Jets", "JetPack", "JetPackDSP", 
@@ -124,10 +124,10 @@ myjet = Jet(dom = JetSpace(Float64, 5),
     rng = JetSpace(Float64, 5), f! = foo!, 
     df! = dfoo!, df′! = dfoo!, s = (a=2.0,))
 ```
-Note that the `′` (prime) in the keyword `df′!` is the unicode chatacter that can be produced by typing `\prime` followed by **TAB**.
+Note that the `′` (prime) in the keyword `df′!` is the unicode character that can be produced by typing `\prime` followed by **TAB**.
 
 ## Linear and nonlinear operators
-A jet can be wrapped into nonlinear (`JopNl`) and linear (`JopLn`) operators. When we wrap a nonlinear operator around a jet, we must also specify the point at which we linearize. Same methods that were applied to a jet can be applied to `Jets` operators: `domain`, `range`, `eltype`, `shape`, `size`, `state`, `state!`, `close`. In addition, given a linear operator, we can recover the corresponding matrix with method `convert`. Continuing from the `myjet` defined in the previous section, we first show a nonlinear operator an then its linearization as a linear operator followed by the associated adjoint operator.
+A jet can be wrapped into nonlinear (`JopNl`) and linear (`JopLn`) operators. When we wrap a nonlinear operator around a jet, we must also specify the point at which we linearize. The same methods that were applied to a jet can be applied to `Jets` operators: `domain`, `range`, `eltype`, `shape`, `size`, `state`, `state!`, `close`. In addition, given a linear operator, we can recover the corresponding matrix with method `convert`. Continuing from the `myjet` defined in the previous section, we first show a nonlinear operator and then its linearization as a linear operator followed by the associated adjoint operator.
 
 **Example: nonlinear operator**
 ```julia
