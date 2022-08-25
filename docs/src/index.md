@@ -18,6 +18,15 @@ The purpose of Jets is to provide familiar matrix-vector syntax without forming 
 - JetPackWaveFD - <https://github.com/ChevronETC/JetPackWaveFD.jl>
 - JetPackTransforms - <https://github.com/ChevronETC/JetPackTransforms.jl>
 
+## Installation
+Jets as well as its companion packages can be installed via the Julia built-in package manager `Pkg`:
+```julia
+using Pkg
+Pkg.add(["Jets", "JetPack", "JetPackDSP", 
+    "JetPackWaveFD", "JetPackTransforms", "DistributedJets"])
+```
+In addition, the packages `LinearAlgebra` and `IterativeSolvers` are also used in this document. Installation can be conducted in the same fashion if not yet done so.
+
 ## Vector spaces
 The domain and range of a jet are vector spaces. In `Jets`, a vector space is represented by one of three concrete types:
 ```julia
@@ -33,6 +42,7 @@ JetBSpace <: JetAbstractSpace
 
 **Examples**
 ```julia
+using Jets                           # load the Jets package
 R₁ = JetSpace(Float32, 10)           # 10 dimensional space using single precision floats
 R₂ = JetSpace(Float64, 10, 20)       # 200 dimensional space with array size 10×20 using double precision floats
 R₃ = JetSpace(ComplexF32, 10, 20, 2) # 400 dimensional space with array size 10×20×2 using single precision floats
@@ -50,10 +60,9 @@ There are jets that lead to symmetries in their domain/range, and those symmetri
 
 **Example**
 ```julia
-using Pkg
-Pkg.add("Jets","JetPackFft")
-A = JopFft(JetSpace(Float64,128))
-R = range(A) # the range of A is a symmetric space R<:JetSSpace
+using Jets, JetPackTransforms       # load packages
+A = JopFft(JetSpace(Float64, 128))  # define a Jet A that applies Fourier transform to a 128-dimensional Float64 vector
+R = range(A)                        # the range of A is a symmetric space R<:JetSSpace (because the domain of A is a real vector)
 ```
 
 ### JetBSpace
@@ -93,91 +102,104 @@ point(jet)                 # get the point that the linearization is about
 point!(jet, mₒ)            # set the point that the linearization is about
 close(jet)                 # closing a jet makes an explicit call to its finalizers
 ```
-Note that the `f!`, `df!` and `df′!` methods are not exported.
+Note that the `f!`, `df!`, `df′!` and `point!` methods are not exported.
 
 **Example, creating a jet for the function `f(x)=x^a`**
 ```julia
-using Pkg
-Pkg.add("Jets")
-foo!(d, m; a, kwargs...) = d .= m.^a
-dfoo!(δd, δm; mₒ, a, kwargs...) = δd .= a * mₒ.^(a-1) .* δm
-jet = Jet(dom = JetSpace(Float64,128), rng = 
-    JetSpace(Float64,128), f! = foo!, df! = dfoo!, s = (a=2.0,))
+using Jets                                  # load package
+foo!(d, m; a, kwargs...) =                  # define the nonlinear function
+    d .= m.^a
+dfoo!(δd, δm; mₒ, a, kwargs...) =           # define the linearization
+    δd .= a * mₒ.^(a-1) .* δm
+myjet = Jet(dom = JetSpace(Float64, 5),     # construct the jet
+    rng = JetSpace(Float64, 5), f! = foo!, 
+    df! = dfoo!, s = (a=2.0,))
 ```
 
 In the above construction, we define the domain (`dom`), range (`rng`), and a function (`f!`) with its linearization (`df!`). In addition, the jet contains *state*. In this case the state is the value of the exponent `a`. The state is passed to the jet using the named tuple `s = (a=2.0,)`. Notice that construction of the jet uses Julia's named arguments. 
 
 Finally, we note that for this specific example, the construction does not specify the adjoint of the lineariziation. This is because for this specific case the linearization is self-adjoint. An equivalent construction that explicitly includes the adjoint is:
 ```julia
-jet = Jet(dom = JetSpace(Float64,128), rng = 
-    JetSpace(Float64,128), f! = foo!, df! = dfoo!, df′! = dfoo!, s=(a=2.0,))
+myjet = Jet(dom = JetSpace(Float64, 5),
+    rng = JetSpace(Float64, 5), f! = foo!, 
+    df! = dfoo!, df′! = dfoo!, s = (a=2.0,))
 ```
+Note that the `′` (prime) in the keyword `df′!` is the unicode character that can be produced by typing `\prime` followed by **TAB**.
 
 ## Linear and nonlinear operators
-A jet can be wrapped into nonlinear (`JopNl`) and linear (`JopLn`) operators. When we wrap a nonlinear operator around a jet, we must also specify the point at which we linearize. Continuing from the `jet` defined in the previous section, we first show a linear operator and then a nonlinear operator.
-
-**Example: linear operator**
-```julia
-A = JopLn(jet, rand(domain(A))  # A is a linear operator linearized about a random point in domain(A)
-m = rand(domain(A))             # m is a vector in domain(A)
-d = A*m                         # d is a vector in range(A), computed via the dfoo! method
-mul!(d, A, m)                   # equivalent in-place version of the previous line
-a = A'*d                        # a is a vector in domain(A), computed via dfoo! (A is self-adjoint)
-mul!(a, A', d)                  # equivalent in-place version of the previous line
-```
+A jet can be wrapped into nonlinear (`JopNl`) and linear (`JopLn`) operators. When we wrap a nonlinear operator around a jet, we must also specify the point at which we linearize. The same methods that were applied to a jet can be applied to `Jets` operators: `domain`, `range`, `eltype`, `shape`, `size`, `state`, `state!`, `close`. In addition, given a linear operator, we can recover the corresponding matrix with method `convert`. Continuing from the `myjet` defined in the previous section, we first show a nonlinear operator and then its linearization as a linear operator followed by the associated adjoint operator.
 
 **Example: nonlinear operator**
 ```julia
-F = JopNl(jet)                  # F is a nonlinear operator
-m = rand(domain(A))             # m is a vector in domain(A)
-d = F*m                         # d is a vector in range(A), computed via the foo! method
-mul!(d, F, m)                   # equivalent in-place version of the prvious line
-A = jacobian(F, rand(domain(A)) # A is the Jacobian of F, a linear operator
+using LinearAlgebra     # load package to enable the function mul!
+F = JopNl(myjet)        # wrap myjet into a nonlinear operator F
+m = rand(domain(F))     # m is a vector in domain(F)
+d₁ = Array(range(F))    # initialize d₁ in the range of F
+mul!(d₁, F, m)          # in-place implementation of F via foo! method
+d₂ = F * m              # equivalent of the previous line (not in-place)
+d₃ = m .^ 2             # ground truth output of the nonlinear function
+display([d₁, d₂, d₃])   # compare the F outputs with the ground truth
 ```
 
-In addition, same methods that were applied to a jet can be applied to `Jets` operators: `domain`, `range`, `eltype`, `shape`, `size`, `state`, `state!`, `close`. Finally, note that given a linear operator, we can recover the corresponding matrix.
+**Example: linear operator**
 ```julia
-using Jets, JetPackTransforms
-A = JopFft(JetSpace(Float64,5))
-B = convert(Array, A)
+m₀ = rand(domain(F))            # specify the point that the linearization is about
+δF = JopLn(myjet, m₀)           # wrap (the lineaerization of) myjet into a linear operator δF
+δF₂ = jacobian(F, m₀)           # equivalently, the same JopLn can be defined with JopNl's Jacobian
+M_δF = convert(Array, δF)       # convert δF into its corresponding array (matrix)
+M_δF₂ = convert(Array, δF₂)     # convert δF₂ into its corresponding array (matrix)
+display(M_δF)                   # display the diagonal matrix corresponding to δF
+display(M_δF₂)                  # demonstrate the equivalence of the two definitions (δF and δF₂)
+δm = rand(domain(δF))           # specify δm in the domain of the linear operator δF
+δd₁ = Array(range(δF))          # initialize δd₁ in the range of the linear operator δF
+mul!(δd₁, δF, δm)               # in-place implementation of F via dfoo! method
+δd₂ = δF * δm                   # equivalent of the previous line (not in-place)
+δd₃ = 2 .* m₀ .* (2 - 1) .* δm  # ground truth output of the linear operator
+display([δd₁, δd₂, δd₃])        # compare the δF outputs with the ground truth
 ```
+
+**Example: adjoint operator**
+```julia
+d = rand(range(δF))             # specify d in the range of δF for adjoint computation
+a₁ = Array(domain(δF))          # initialize a₁ in the domain of δF (range of its adjoint)
+mul!(a₁, δF', d)                # in-place implementation of F via the self-adjoint dfoo! method
+a₂ = δF' * d                    # equivalent of the previous line (not in-place)
+a₃ = 2 .* m₀ .* (2 - 1) .* d    # ground truth output of the adjoint linear operator
+display([a₁, a₂, a₃])           # compare the δF' outputs with the ground truth
+```
+
+Note that the `'` in `δF'` is the trailing apostrophe, i.e., the adjoint (complex transpose) operator in Julia.
 
 ## Operator compositions
-Jot operators can be combined in various ways. In this section we consider operator compositions. Operators are composed using `∘` which can be typed into your favorite text editor using unicode. Note that editors such as emacs, vim, atom, vscode, and JupyterLab support using LaTeX. So, typing `\circ` followed by **TAB** will produce `∘`.
+Jet operators can be combined in various ways. In this section we consider operator compositions. Operators are composed using `∘` which can be typed into your favorite text editor using unicode. Note that editors such as emacs, vim, atom, vscode, and JupyterLab support using LaTeX. So, typing `\circ` followed by **TAB** will produce `∘`.
 
 **Example of operator compositions**  
 ```julia
-using Pkg
-Pkg.add("Jets","JetPack")
 using Jets, JetPack
 A₁ = JopDiagonal(rand(10))
 A₂ = JopDiagonal(rand(10))
 A₃ = rand(10,10)
-A = A₃ ∘ A₂ ∘ A₁
+A = A₃ ∘ A₂ ∘ A₁                # operator composition
 m = rand(domain(A))
-A * m ≈ A₃ * (A₂ * (A₁ * m)) # true
+A * m ≈ A₃ * (A₂ * (A₁ * m))    # true
 ```
 Notice that `A₃` is a Julia matrix rather than a Jet operator.
 
 ## Operator linear combinations
 Operators can be built from linear combinations of operators,
 ```julia
-using Pkg
-Pkg.add("Jets","JetPack")
 using Jets, JetPack
 A₁ = JopDiagonal(rand(10))
 A₂ = JopDiagonal(rand(10))
 A₃ = rand(10,10)
-A = 1.0*A₁ - 2.0*A₂ + 3.0*A₃
+A = 1.0*A₁ - 2.0*A₂ + 3.0*A₃                # operator linear combination
 m = rand(domain(A))
-A*m ≈ 1.0*(A₁*m) - 2.0*(A₂*m) + 3.0*(A₃*m) # true
+A*m ≈ 1.0*(A₁*m) - 2.0*(A₂*m) + 3.0*(A₃*m)  # true
 ```
 
 ## Block operators, block spaces and block vectors
 Jet operators can be combined into block operators which are exactly analogous to block matrices. The domain and ranges of a block operator are of type `JetBSpace` and such that vectors in that space are block vectors of type `BlockArray`. In order to construct a block operator, we use the `@blockop` macro. For example:
 ```julia
-using Pkg
-Pkg.add("Jets","JetPack")
 using Jets, JetPack
 A = @blockop [JopDiagonal(rand(10)) for irow=1:2, icol=1:3]
 ```
@@ -193,13 +215,13 @@ We can form block vectors in the domain and range of `A`. Moreover, once we have
 d = rand(range(A))
 m = rand(domain(A))
 
-nblocks(d)
-nblocks(m)
+nblocks(d)          # return 2
+nblocks(m)          # return 3
 
 d₂ = getblock(d, 2) # this is not a copy, it is a reference to the second block of d
 m₁ = getblock(m, 1)
 
-setblock!(d, 2, rand(size(d₂)))
+setblock!(d, 2, rand(size(d₂)...))
 ```
 We can reshape Julia Array's into block arrays. For example,
 ```julia
@@ -213,15 +235,13 @@ There are libraries that assume that the vectors in the model and data space are
 a `vec` method that returns an operator with one dimensional arrays backing the domain and range.  As an example, we show how to compose Jets with
 the `lsqr` method in the IterativeSolvers package.
 ```julia
-using Jets, JetPack, IterativeSolvers
-
+using Jets, JetPackTransforms, IterativeSolvers
 A = JopDct(Float64, 128, 64)
 d = rand(range(A))
 m = reshape(lsqr(vec(A), vec(d)), range(A))
 A*m ≈ d # true
 ```
-Note that for the case that the domain and range are already backed by one dimensional arrays, `vec` is a no-op.  Further, note that a block array
-is a one dimensional array.  
+Note that for the case that the domain and range are already backed by one dimensional arrays, `vec` is a no-op. Further, note that a block array is a one dimensional array.  
 
 ## Creating a new Jet (Developers) 
 To build a new jet, provide the function that maps from the domain to the range, its linearization and a default state. We will show three examples: 1) linear operator, 2) self-adjoint linear operator, 3) nonlinear operator.
@@ -252,7 +272,7 @@ end
 ```julia
 using Jets
 MyNonLinearJet_f!(d, m; a, kwargs...) = d .= x.^a
-MyNonLinearJet_df!(d, m; mₒ, a, kwargs...) = d . = a * mₒ.^(a-1) .* m
+MyNonLinearJet_df!(d, m; mₒ, a, kwargs...) = d .= a * mₒ.^(a-1) .* m
 function MyNonLinearJet()
     JopNl(dom = JetSpace(Float64,2), rng = JetSpace(Float64,2), 
         f! = MyNonLinearJet_f!, df! = MyNonLinearJet_df!, s = (a=2.0,))
