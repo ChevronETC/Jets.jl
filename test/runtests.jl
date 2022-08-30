@@ -145,6 +145,16 @@ end
 
     B = JopFooBar(5)
     @test convert(Array, B) ≈ diagm(0=>vec(state(B).A))
+
+    m,d = rand(domain(B)),rand(range(B))
+    B₁ = jacobian(B, rand(domain(B)))
+    @test B₁ * m ≈ B * m
+    B₂ = jacobian!(B, rand(domain(B)))
+    @test B₂ * m ≈ B * m
+    B₃ = jacobian(B', rand(domain(B')))
+    @test B₃' * d ≈ B' * d
+    B₄ = jacobian!(B', rand(domain(B')))
+    @test B₄' * d ≈ B' * d
 end
 
 @testset "nonlinear operator" begin
