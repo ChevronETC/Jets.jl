@@ -353,7 +353,7 @@ This means that if the jacobian may mutate `F`.
 """
 jacobian!(jet::Jet, mₒ::AbstractArray) = JopLn(jet, mₒ)
 jacobian!(F::JopNl, mₒ::AbstractArray) = jacobian!(jet(F), mₒ)
-jacobian!(A::Union{JopLn,AbstractMatrix}, mₒ::AbstractArray) = A
+jacobian!(A::Union{JopLn,JopAdjoint,AbstractMatrix}, mₒ::AbstractArray) = A
 
 """
     jacobian(F, m₀)
