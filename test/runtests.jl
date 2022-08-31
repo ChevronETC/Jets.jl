@@ -1,9 +1,10 @@
 using Jets, LinearAlgebra, Random, Test
 
 JopFoo_df!(d,m;diagonal,kwargs...) = d .= diagonal .* m
+JopFoo_df′!(m,d;diagonal,kwargs...) = m .= conj.(diagonal) .* d
 function JopFoo(diag)
-    spc = JetSpace(Float64, length(diag))
-    JopLn(;df! = JopFoo_df!, dom = spc, rng = spc, s = (diagonal=diag,))
+    spc = JetSpace(eltype(diag), length(diag))
+    JopLn(;df! = JopFoo_df!, df′! = JopFoo_df′!, dom = spc, rng = spc, s = (diagonal=diag,))
 end
 Jets.perfstat(J::Jet{D,R,typeof(JopFoo_df!)}) where {D,R} = Float64(π)
 
@@ -857,4 +858,35 @@ end
 
     B = A₂ + A₁
     @test perfstat(B) ≈ Float64(π)
+end
+
+@testset "dot product test" begin
+    A = JopFoo(rand(10))
+    lhs,rhs = dot_product_test(A, rand(domain(A)), rand(range(A)))
+    @test lhs ≈ rhs
+
+    mmask = ones(domain(A))
+    mmask[1] = 0
+
+    dmask = ones(range(A))
+    dmask[1] = 0
+
+    lhs,rhs = dot_product_test(A, rand(domain(A)), rand(range(A)); mmask, dmask)
+    @test lhs ≈ rhs
+
+    A = JopFoo(rand(ComplexF64, 10))
+    lhs,rhs = dot_product_test(A, rand(domain(A)), rand(range(A)))
+    @test lhs ≈ rhs
+end
+
+@testset "linearization test" begin
+    F = JopBar(10)
+    μobs,μexp = linearization_test(F, rand(domain(F)))
+    @test maximum(μobs) ≈ maximum(μexp)
+end
+
+@testset "linearity test" begin
+    A = JopFoo(rand(10))
+    lhs,rhs = linearity_test(A)
+    @test lhs ≈ rhs
 end
