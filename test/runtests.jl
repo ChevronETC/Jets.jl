@@ -523,6 +523,8 @@ end
     @test eltype(y) == Float64
     @test y ≈ abs.(_x)
     @test R == space(rand(R))
+
+    @test dot(x,x) ≈ dot(_x,_x)
 end
 
 @testset "block arrays, broadcasting" begin
