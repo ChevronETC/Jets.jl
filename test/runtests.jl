@@ -238,6 +238,12 @@ end
     @test norm(x,0) ≈ 2*norm(y,0)
     @test space(rand(R)) == R
     @test similar(R, (0,0)) == JetSSpace{Complex{Float64},2,typeof(indexmap)}((0,0), R.M, R.map)
+
+    for idx in eachindex(x)
+        i = LinearIndices(x)[idx]
+        x[i] = i + i*im
+        @test x[idx] ≈ i + i*im
+    end
 end
 
 @testset "Symmetric spaces, broadcast" begin
