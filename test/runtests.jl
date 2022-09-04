@@ -847,6 +847,19 @@ end
     end
 end
 
+@testset "close linear combo op" begin
+    A₁ = JopClose(rand(2))
+    A₂ = JopClose(rand(2))
+    A = A₂ + A₁
+    for B in (A₁, A₂)
+        @test isfile(state(B).file)
+    end
+    close(A)
+    for B in (A₁, A₂)
+        @test !isfile(state(B).file)
+    end
+end
+
 @testset "perfstat" begin
     A₁ = JopFoo(rand(2))
     A₂ = JopBar(2)
