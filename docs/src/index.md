@@ -116,7 +116,9 @@ myjet = Jet(dom = JetSpace(Float64, 5),     # construct the jet
     df! = dfoo!, s = (a=2.0,))
 ```
 
-In the above construction, we define the domain (`dom`), range (`rng`), and a function (`f!`) with its linearization (`df!`). In addition, the jet contains *state*. In this case the state is the value of the exponent `a`. The state is passed to the jet using the named tuple `s = (a=2.0,)`. Notice that construction of the jet uses Julia's named arguments. 
+In the above construction, we define the domain (`dom`), range (`rng`), and a function (`f!`) with its linearization (`df!`). In addition, the jet contains *state*. In this case the state is the value of the exponent `a`. The state is passed to the jet using the named tuple `s = (a=2.0,)`. Notice that construction of the jet uses Julia's named arguments.
+
+Additionally, note that `mₒ` is `m` with the lower-case letter `o` for the subscript.
 
 Finally, we note that for this specific example, the construction does not specify the adjoint of the lineariziation. This is because for this specific case the linearization is self-adjoint. An equivalent construction that explicitly includes the adjoint is:
 ```julia
