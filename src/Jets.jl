@@ -345,7 +345,7 @@ Base.size(A::Union{Jet,Jop}, i) = prod(shape(A, i))
 Base.size(A::Union{Jet,Jop}) = (size(A, 1), size(A, 2))
 
 """
-    jacobian!(F, m₀)
+    jacobian!(F, mₒ)
 
 Return the jacobian of `F::Union{Jet, Jop, AbstractMatrix}` at the
 linearization point `m₀`. The jacobian shares the underlying `Jet` with `F`.
@@ -356,7 +356,7 @@ jacobian!(F::JopNl, mₒ::AbstractArray) = jacobian!(jet(F), mₒ)
 jacobian!(A::Union{JopLn,JopAdjoint,AbstractMatrix}, mₒ::AbstractArray) = A
 
 """
-    jacobian(F, m₀)
+    jacobian(F, mₒ)
 
 Return the jacobian of `F::Union{Jet, Jop, AbstractMatrix}` at the point `m₀`.
 The linearization constructs a new underlying `Jet`.

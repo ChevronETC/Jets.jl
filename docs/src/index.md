@@ -116,7 +116,9 @@ myjet = Jet(dom = JetSpace(Float64, 5),     # construct the jet
     df! = dfoo!, s = (a=2.0,))
 ```
 
-In the above construction, we define the domain (`dom`), range (`rng`), and a function (`f!`) with its linearization (`df!`). In addition, the jet contains *state*. In this case the state is the value of the exponent `a`. The state is passed to the jet using the named tuple `s = (a=2.0,)`. Notice that construction of the jet uses Julia's named arguments. 
+In the above construction, we define the domain (`dom`), range (`rng`), and a function (`f!`) with its linearization (`df!`). In addition, the jet contains *state*. In this case the state is the value of the exponent `a`. The state is passed to the jet using the named tuple `s = (a=2.0,)`. Notice that construction of the jet uses Julia's named arguments.
+
+Additionally, note that `mₒ` is `m` with the lower-case letter `o` for the subscript.
 
 Finally, we note that for this specific example, the construction does not specify the adjoint of the lineariziation. This is because for this specific case the linearization is self-adjoint. An equivalent construction that explicitly includes the adjoint is:
 ```julia
@@ -143,9 +145,9 @@ display([d₁, d₂, d₃])   # compare the F outputs with the ground truth
 
 **Example: linear operator**
 ```julia
-m₀ = rand(domain(F))            # specify the point that the linearization is about
-δF = JopLn(myjet, m₀)           # wrap (the lineaerization of) myjet into a linear operator δF
-δF₂ = jacobian(F, m₀)           # equivalently, the same JopLn can be defined with JopNl's Jacobian
+mₒ = rand(domain(F))            # specify the point that the linearization is about
+δF = JopLn(myjet, mₒ)           # wrap (the lineaerization of) myjet into a linear operator δF
+δF₂ = jacobian(F, mₒ)           # equivalently, the same JopLn can be defined with JopNl's Jacobian
 M_δF = convert(Array, δF)       # convert δF into its corresponding array (matrix)
 M_δF₂ = convert(Array, δF₂)     # convert δF₂ into its corresponding array (matrix)
 display(M_δF)                   # display the diagonal matrix corresponding to δF
@@ -154,7 +156,7 @@ display(M_δF₂)                  # demonstrate the equivalence of the two defi
 δd₁ = Array(range(δF))          # initialize δd₁ in the range of the linear operator δF
 mul!(δd₁, δF, δm)               # in-place implementation of F via dfoo! method
 δd₂ = δF * δm                   # equivalent of the previous line (not in-place)
-δd₃ = 2 .* m₀ .* (2 - 1) .* δm  # ground truth output of the linear operator
+δd₃ = 2 .* mₒ .* (2 - 1) .* δm  # ground truth output of the linear operator
 display([δd₁, δd₂, δd₃])        # compare the δF outputs with the ground truth
 ```
 
@@ -164,7 +166,7 @@ d = rand(range(δF))             # specify d in the range of δF for adjoint com
 a₁ = Array(domain(δF))          # initialize a₁ in the domain of δF (range of its adjoint)
 mul!(a₁, δF', d)                # in-place implementation of F via the self-adjoint dfoo! method
 a₂ = δF' * d                    # equivalent of the previous line (not in-place)
-a₃ = 2 .* m₀ .* (2 - 1) .* d    # ground truth output of the adjoint linear operator
+a₃ = 2 .* mₒ .* (2 - 1) .* d    # ground truth output of the adjoint linear operator
 display([a₁, a₂, a₃])           # compare the δF' outputs with the ground truth
 ```
 
