@@ -916,7 +916,7 @@ end
 function JetBlock(ops::AbstractMatrix{T}; dadom=false, kwargs...) where {T<:Jop}
     dom = (size(ops,2) == 1 && !dadom) ? domain(ops[1,1]) : JetBSpace([domain(ops[1,i]) for i=1:size(ops,2)])
     rng = JetBSpace([range(ops[i,1]) for i=1:size(ops,1)])
-    Jet(f! = JetBlock_f!, df! = JetBlock_df!, df′! = JetBlock_df′!, dom = dom, rng = rng, s = (ops=ops,dom=dom,rng=rng))
+    Jet(f! = JetBlock_f!, df! = JetBlock_df!, df′! = JetBlock_df′!, dom = dom, rng = rng, s = (ops=ops,dom=dom,rng=rng,kwargs...))
 end
 JopBlock(ops::AbstractMatrix{T}; kwargs...) where {T<:Union{JopLn,JopAdjoint}} = JopLn(JetBlock(ops; kwargs...))
 JopBlock(ops::AbstractMatrix{T}; kwargs...) where {T<:Jop} = JopNl(JetBlock(ops; kwargs...))
