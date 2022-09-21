@@ -82,6 +82,14 @@ end
     @test typeof(randperm(R, 2)) == Vector{Int}
     @test R == space(rand(R))
     @test similar(R, ntuple(_->0, N)) == JetSpace(T, ntuple(_->0, N))
+    U = space(rand(R), size(R)..., 3)
+    @test size(U) == (size(R)..., 3)
+    @test eltype(U) == eltype(R)
+    U = space(rand(R), Int32)
+    @test eltype(U) == Int32
+    U = space(rand(R), Int32, size(R)..., 3)
+    @test eltype(U) == Int32
+    @test size(U) == (size(R)...,3)
 end
 
 @testset "Jet, construction" begin
