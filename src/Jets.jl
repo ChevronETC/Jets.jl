@@ -117,6 +117,7 @@ y = x[randperm(R)[1:10]] # get 10 elements at random from x
 Random.randperm(R::JetAbstractSpace, k::Int) = sort(randperm(length(R))[1:k])
 
 space(x::AbstractArray{T,N}) where {T,N} = JetSpace{T,N}(size(x))
+space(x::AbstractArray{T}, n::Vararg{Int,N}) where {T,N} = JetSpace{T,N}(n)
 
 jet_missing(m) = error("not implemented")
 
