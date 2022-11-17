@@ -504,7 +504,7 @@ get_symmetricarray_parent(A, ::Type{<:Any}) = A
 function Base.copyto!(dest::SymmetricArray{T,N}, bc::Broadcast.Broadcasted{Nothing}) where {T,N}
     S = Broadcast.DefaultArrayStyle{N}
     copyto!(parent(dest), get_symmetricarray_parent(bc, S))
-    dest
+    dest 
 end
 # -->
 
