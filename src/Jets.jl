@@ -67,6 +67,8 @@ Base.vec(R::JetSpace) = JetSpace(eltype(R), length(R))
 Base.similar(R::JetSpace{T,N}, dims::NTuple{N,Int}) where {T,N} = JetSpace(T, dims)
 Base.similar(R::JetSpace, dims::Int...) = similar(R, dims)
 
+similar_zero_size(R::JetSpace{T,N}) where {T,N} = JetSpace(T, ntuple(_->0, N))
+
 @doc """
     Array(R)
 
@@ -177,7 +179,7 @@ function Jet(;
     if isa(df′!, typeof(jet_missing))
         df′! = df!
     end
-    Jet(dom, rng, f!, df!, df′!, upstate!, Array(similar(dom, ntuple(i->0,ndims(dom)))), s)
+    Jet(dom, rng, f!, df!, df′!, upstate!, Array(similar_zero_size(dom)), s)
 end
 
 f!(d, jet::Jet, m; kwargs...) = jet.f!(d, m; kwargs...)
@@ -431,6 +433,9 @@ Base.eltype(R::Type{JetSSpace{T,N}}) where {T,N} = T
 Base.eltype(R::Type{JetSSpace{T}}) where {T} = T
 Base.similar(R::JetSSpace{T,N,F}, dims::NTuple{N,Int}) where {T,N,F} = JetSSpace{T,N,F}(dims, R.M, R.map)
 Base.similar(R::JetSSpace, dims::Int...) = similar(R, dims)
+
+similar_zero_size(R::JetSSpace{T,N}) where{T,N} = JetSSpace(ntuple(_->0, N), R.M, R.map)
+
 symspace() = nothing
 
 struct SymmetricArray{T,N,F<:Function} <: AbstractArray{T,N}
@@ -751,6 +756,8 @@ Base.eltype(R::Type{JetBSpace{T}}) where {T} = T
 Base.vec(R::JetBSpace) = R
 Base.similar(R::JetBSpace{T}, dims::NTuple{1,Int}) where {T} = JetSpace(T, dims)
 Base.similar(R::JetBSpace, dims::Int...) = similar(R, dims)
+
+similar_zero_size(R::JetBSpace) = JetBSpace([similar_zero_size(space) for space in R.spaces])
 
 """
     indices(R, iblock)
