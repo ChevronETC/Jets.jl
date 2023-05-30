@@ -1,6 +1,6 @@
 name = "Jets"
 uuid = "2a57b368-ab28-5ba9-84aa-637fe7991822"
-version = "1.4.0"
+version = "1.4.1"
 
 [deps]
 CRC32c = "8bf52ea8-c179-5cab-976a-9e18b702a9bc"
