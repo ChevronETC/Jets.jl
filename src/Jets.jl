@@ -1120,7 +1120,7 @@ end
 # Vectorized operator
 #
 JetVec(op::Jop) = Jet(f! = JetVec_f!, df! = JetVec_df!, df′! = JetVec_df′!, dom = vec(domain(op)), rng = vec(range(op)), s=(op=op,))
-JetVec(op::Jop{<:J}) where {T,U,D<:JetAbstractSpace{T,1},R<:JetAbstractSpace{T,1},J<:Jet{D,R}} = op
+JetVec(op::Jop{<:J}) where {T,D<:JetAbstractSpace{T,1},R<:JetAbstractSpace{T,1},J<:Jet{D,R}} = op
 JopVec(op::Union{JopLn,JopAdjoint}) = JopLn(JetVec(op))
 JopVec(op::Jop) = JopNl(JetVec(op))
 
