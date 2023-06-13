@@ -1,6 +1,7 @@
 module Jets
 
 using CRC32c, LinearAlgebra, Random
+import Base: +, -, *, \, /
 
 abstract type JetAbstractSpace{T,N} end
 
@@ -824,6 +825,58 @@ Base.similar(A::BlockArray{T}) where {T} = similar(A, T)
 Base.similar(x::BlockArray, ::Type{T}, n::Integer) where {T} = length(x) == n ? similar(x, T) : Array{T}(undef, n)
 Base.similar(x::BlockArray, ::Type{T}, dims::Tuple{Int}) where {T} = similar(x, T, dims[1])
 
+function *(x::Number, a::BlockArray{T}) where {T}
+    b = deepcopy(a)
+    for i = 1:nblocks(a)
+        setblock!(b, i, T(x) * getblock(a, i))
+    end
+    return b
+end
+
+function *(a::BlockArray{T}, x::Number) where {T}
+    b = deepcopy(a)
+    for i = 1:nblocks(a)
+        setblock!(b, i, getblock(a, i) * T(x))
+    end
+    return b
+end
+
+function /(a::BlockArray{T}, x::Number) where {T}
+    b = deepcopy(a)
+    for i = 1:nblocks(a)
+        setblock!(b, i, getblock(a, i) \ T(x))
+    end
+    return b
+end
+
+function \(x::Number, a::BlockArray{T}) where {T}
+    b = deepcopy(a)
+    for i = 1:nblocks(a)
+        setblock!(b, i, T(x) \ getblock(a, i))
+    end
+    return b
+end
+
+for op ∈ [:+, :-, :*, :/,  :\]
+    @eval function broadcasted(::typeof($op), x::Number, a::BlockArray{T}) where {T}
+        b = deepcopy(a)
+        for i = 1:nblocks(a)
+            setblock!(b, i, broadcasted($op, T(x), getblock(a, i)))
+        end
+        return b
+    end
+end
+
+for op ∈ [:+, :-, :*, :/]
+    @eval function broadcasted(::typeof($op), a::BlockArray{T}, x::Number) where {T}
+        b = deepcopy(a)
+        for i = 1:nblocks(a)
+            setblock!(b, i, broadcasted($op, getblock(a, i),  T(x)))
+        end
+        return b
+    end
+end
+
 function LinearAlgebra.norm(x::BlockArray{T}, p::Real=2) where {T}
     if p == Inf
         mapreduce(_x->norm(_x,p), max, x.arrays)
@@ -893,6 +946,7 @@ find_blockarray(::Any, rest) = find_blockarray(rest)
 getblock(bc::Broadcast.Broadcasted, ::Type{S}, iblock, indices) where {S} = Broadcast.Broadcasted{S}(bc.f, map(arg->getblock(arg, S, iblock, indices), bc.args))
 getblock(A::BlockArray, ::Type{<:Any}, iblock, indices) = getblock(A, iblock)
 getblock(A::AbstractArray, ::Type{<:Any}, iblock, indices) = A[indices]
+getblock(A::Number, ::Vararg{N}) where N = A
 getblock(A, ::Type{<:Any}, iblock, indices) = A
 
 function Base.copyto!(dest::BlockArray{T,<:AbstractArray{T,N}}, bc::Broadcast.Broadcasted{BlockArrayStyle}) where {T,N}
