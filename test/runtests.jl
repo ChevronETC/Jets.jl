@@ -67,6 +67,7 @@ end
 @testset "JetSpace, operations, n=$n, T=$T" for n in ((2,),(2,3),(2,3,4)), T in (Float32,Float64,Complex{Float32},Complex{Float64})
     R = JetSpace(T, n...)
     N = length(n)
+    _x = randn(R)
     x = rand(R)
     @test eltype(x) == T
     @test size(x) == n
@@ -234,6 +235,7 @@ end
     @test size(rand(R)) == (8,4)
     @test size(Array(R)) == (8,4)
     @test eltype(Array(R)) == Complex{Float64}
+    _x = randn(R)
     x = rand(R)
     z = similar(x)
     @test typeof(z) == Jets.SymmetricArray{Complex{Float64},2,typeof(indexmap)}
@@ -524,6 +526,13 @@ end
     @test norm(x,Inf) ≈ norm(_x,Inf)
 
     x = rand(R)
+    _x = convert(Array, x)
+    mn,mx = extrema(x)
+    _mn,_mx = extrema(_x)
+    @test mn ≈ _mn
+    @test mx ≈ _mx
+
+    x = randn(R)
     _x = convert(Array, x)
     mn,mx = extrema(x)
     _mn,_mx = extrema(_x)

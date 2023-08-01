@@ -84,9 +84,16 @@ ones
 @doc """
     rand(R)
 
-Construct an array of the type and size defined by the `R::JetAbstractSpace`, and filled with random values.
+Construct an array of the type and size defined by the `R::JetAbstractSpace`, and filled with random values from 0 - 1.
 """
 rand
+
+@doc """
+    randn(R)
+
+Construct an array of the type and size defined by the `R::JetAbstractSpace`, and filled with random values from Gaussian distribution.
+"""
+randn
 
 @doc """
     zeros(R)
@@ -95,7 +102,7 @@ Construct an array of the type and size defined by `R::JetAbstractSpace{T}` and 
 """
 zeros
 
-for f in (:ones, :rand, :zeros)
+for f in (:ones, :rand, :randn, :zeros)
     @eval (Base.$f)(R::JetSpace{T,N}) where {T,N} = ($f)(T,size(R))::Array{T,N}
 end
 Base.Array(R::JetSpace{T,N}) where {T,N} = Array{T,N}(undef, size(R))
@@ -503,7 +510,7 @@ function Base.copyto!(dest::SymmetricArray{T,N}, bc::Broadcast.Broadcasted{Nothi
 end
 # -->
 
-for f in (:ones, :rand, :zeros)
+for f in (:ones, :rand, :randn, :zeros)
     @eval (Base.$f)(R::JetSSpace{T,N,F}) where {T,N,F} = SymmetricArray(($f)(T,R.M), R.n, R.map)::SymmetricArray{T,N,F}
 end
 Base.Array(R::JetSSpace{T,N,F}) where {T,N,F} = SymmetricArray{T,N,F}(Array{T,N}(undef, R.M), R.n, R.map)
@@ -912,7 +919,7 @@ getblock(x::AbstractArray, iblock) = x
 getblock!(x::AbstractArray, iblock, xblock::AbstractArray) = xblock .= x
 setblock!(x::AbstractArray, iblock, xblock) = x .= xblock
 
-for f in (:Array, :ones, :rand, :zeros)
+for f in (:Array, :ones, :rand, :randn, :zeros)
     @eval (Base.$f)(R::JetBSpace{T,S}) where {T,S<:JetAbstractSpace} = BlockArray([($f)(space(R, i)) for i=1:length(R.spaces)], R.indices)
 end
 
