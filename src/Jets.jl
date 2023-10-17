@@ -249,6 +249,22 @@ Return `R::JetAbstractSpace`, which is the range of `A::Union{Jet, Jop, Abstract
 Base.range(jet::Jet) = jet.rng
 
 """
+    domain!(A::Union{Jet,Jop,JopAdjoint}, R)
+
+Mutate `A` so that it has the domain `R`.  The types of `A` and `R` must be consistent.
+This method is dangerous as it mutates the behavior of A.
+"""
+domain!(jet::Jet{D}, d::D) where {D<:JetAbstractSpace} = jet.dom = d
+
+"""
+    range!(A::Union{Jet,Jop,JopAdjoint}, R)
+
+Mutate `A` so that it has the range `R`.  The types of `A` and `R` must be consistent.
+This method is dangerous as it mutates the behavior of A.
+"""
+range!(jet::Jet{<:JetAbstractSpace,R}, r::R) where {R<:JetAbstractSpace} = jet.rng = r
+
+"""
     eltype(A::Union{Jet,Jop,JopAdjoint})
 
 Return the element type of `A`.
@@ -321,6 +337,12 @@ Base.range(A::Jop) = range(jet(A))
 
 domain(A::JopAdjoint) = range(A.op)
 Base.range(A::JopAdjoint) = domain(A.op)
+
+domain!(A::Jop, R) = domain!(jet(A), R)
+range!(A::Jop, R) = range!(jet(A), R)
+
+domain!(A::JopAdjoint, R) = range!(A, R)
+range!(A::JopAdjoint, R) = domain!(A, R)
 
 domain(A::AbstractMatrix{T}) where {T} = JetSpace(T, size(A,2))
 Base.range(A::AbstractMatrix{T}) where {T} = JetSpace(T, size(A,1))
@@ -1286,8 +1308,8 @@ CRC32c.crc32c(m::Array{<:Union{UInt32,Float32,Float64,Complex{Float32},Complex{F
 #-->
 
 export Jet, JetAbstractSpace, JetBSpace, JetSpace, JetSSpace, Jop, JopAdjoint, JopLn, JopNl,
-    JopZeroBlock, @blockop, domain, getblock, getblock!, dot_product_test, getblock,
+    JopZeroBlock, @blockop, domain, domain!, getblock, getblock!, dot_product_test, getblock,
     getblock!, indices, jacobian, jacobian!, jet, linearity_test, linearization_test,
-    nblocks, perfstat, point, setblock!, shape, space, state, state!, symspace
+    nblocks, perfstat, point, range!, setblock!, shape, space, state, state!, symspace
 
 end
