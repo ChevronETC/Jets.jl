@@ -123,6 +123,25 @@ end
     @test close(✈) == false
 end
 
+@testset "Jet, domain/range mutation" begin
+    f!(d,m;a) = d .= a .* m.^2
+    df!(δd,δm;a,mₒ) = δd .= 2 .* a .* mₒ .* δm
+    a = rand(20)
+    ✈ = Jet(;
+        dom = JetSpace(Float64,0),
+        rng = JetSpace(Float64,0,0),
+        f! = f!,
+        df! = df!,
+        df′! = df!,
+        s = (a=a,))
+
+    domain!(✈, JetSpace(Float64, 20))
+    range!(✈, JetSpace(Float64, 10, 2))
+
+    @test domain(✈) == JetSpace(Float64,20)
+    @test range(✈) == JetSpace(Float64,10,2)
+end
+
 @testset "linear operator" begin
     diag = rand(10)
     A = JopFoo(diag)
@@ -167,6 +186,23 @@ end
     @test B₄' * d ≈ B' * d
 end
 
+@testset "linear operator, domain/range mutation" begin
+    diag = rand(10)
+    A = JopFoo(diag)
+
+    state!(A, (diagonal = rand(20),))
+    domain!(A, JetSpace(Float64, 20))
+    range!(A, JetSpace(Float64, 20))
+
+    @test domain(A) == JetSpace(Float64,20)
+    @test range(A) == JetSpace(Float64,20)
+
+    m = rand(domain(A))
+    d = A*m
+    @test length(d) == 20
+    @test length(m) == 20
+end
+
 @testset "nonlinear operator" begin
     n = 10
     F = JopBar(n)
@@ -191,6 +227,26 @@ end
     @test shape(F,2) == (10,)
     @test domain(F) == JetSpace(Float64,10)
     @test range(F) == JetSpace(Float64,10)
+end
+
+@testset "nonlinear operator, domain/range mutation" begin
+    n = 10
+    F = JopBar(n)
+
+    m = rand(domain(F))
+    d = F*m
+
+    @test length(d) == 10
+    @test length(m) == 10
+
+    domain!(F, JetSpace(Float64, 20))
+    range!(F, JetSpace(Float64, 20))
+
+    m = rand(domain(F))
+    d = F*m
+
+    @test length(d) == 20
+    @test length(m) == 20
 end
 
 @testset "upstate" begin

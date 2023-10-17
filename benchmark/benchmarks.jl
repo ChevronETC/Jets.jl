@@ -21,10 +21,13 @@ f!(d,m;a) = d .= a .* m.^2
 df!(δd,δm;a,mₒ) = δd .= 2 .* a .* mₒ .* δm
 a = rand(20)
 ✈ = Jet(dom=dom, rng=rng, f! = f!, df! = df!, df′! = df!, s = (a = a,))
+✈₁ = deepcopy(✈)
 SUITE["✈"] = BenchmarkGroup()
 SUITE["✈"]["construct"] = @benchmarkable Jet(dom=$dom, rng=$rng, f! = $(f!), df! = $(df!), df′! = $(df!), s = (a = $a,))
 SUITE["✈"]["domain"] = @benchmarkable domain($✈)
 SUITE["✈"]["range"] = @benchmarkable range($✈)
+SUITE["✈"]["domain!"] = @benchmarkable domain!($✈₁, $(JetSpace(Float64,30)))
+SUITE["✈"]["range!"] = @benchmarkable range!($✈₁, $(JetSpace(Float64, 15, 2)))
 SUITE["✈"]["point"] = @benchmarkable point($✈)
 SUITE["✈"]["state"] = @benchmarkable state($✈)
 SUITE["✈"]["state!"] = @benchmarkable state!($✈, (a=$(rand(20)),))
@@ -37,6 +40,7 @@ function JopFoo(diag)
     JopLn(;df! = JopFoo_df!, dom = spc, rng = spc, s = (diagonal=diag,))
 end
 A = JopFoo(rand(100))
+B = deepcopy(A)
 m = rand(100)
 d = rand(100)
 SUITE["JopLn"] = BenchmarkGroup()
@@ -50,6 +54,8 @@ SUITE["JopLn"]["size"] = @benchmarkable size($A)
 SUITE["JopLn"]["shape"] = @benchmarkable shape($A)
 SUITE["JopLn"]["domain"] = @benchmarkable domain($A)
 SUITE["JopLn"]["range"] = @benchmarkable range($A)
+SUITE["JopLn"]["domain!"] = @benchmarkable domain!($B, $(JetSpace(Float64,200)))
+SUITE["JopLn"]["range!"] = @benchmarkable range!($B, $(JetSpace(Float64,200)))
 
 JopBar_f!(d,m;kwargs...) = d .= m.^2
 JopBar_df!(δd,δm;mₒ,kwargs...) = δd .= 2 .* mₒ .* δm
@@ -58,6 +64,7 @@ function JopBar(n)
     JopNl(f! = JopBar_f!, df! = JopBar_df!, dom = spc, rng = spc)
 end
 F = JopBar(100)
+G = deepcopy(F)
 m = rand(100)
 d = rand(100)
 SUITE["JopNl"] = BenchmarkGroup()
@@ -69,6 +76,8 @@ SUITE["JopNl"]["size"] = @benchmarkable size($F)
 SUITE["JopNl"]["shape"] = @benchmarkable shape($F)
 SUITE["JopNl"]["domain"] = @benchmarkable domain($F)
 SUITE["JopNl"]["range"] = @benchmarkable range($F)
+SUITE["JopNl"]["domain!"] = @benchmarkable domain!($G, $(JetSpace(Float64,100)))
+SUITE["JopNl"]["range!"] = @benchmarkable range!($G, $(JetSpace(Float64,100)))
 
 G = F ∘ A ∘ F ∘ A
 J = jacobian!(G, m)
